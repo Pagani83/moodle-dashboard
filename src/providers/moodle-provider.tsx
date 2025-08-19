@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
@@ -83,12 +83,22 @@ export function MoodleProvider({
   children, 
   enableDevtools = process.env.NODE_ENV === 'development' 
 }: MoodleProviderProps) {
+  const [initializationComplete, setInitializationComplete] = useState(false);
   
-  // Inicializar configuração de desenvolvimento se disponível
+  // Inicializar configuração automaticamente se as variáveis de ambiente estão disponíveis
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      initializeDevConfig();
-    }
+    // Aguardar um pouco para garantir que as env vars estão disponíveis
+    const timer = setTimeout(() => {
+      try {
+        initializeDevConfig();
+      } catch (error) {
+        console.error('Erro ao inicializar configuração:', error);
+      } finally {
+        setInitializationComplete(true);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Persistência do cache do React Query no browser
@@ -226,6 +236,27 @@ export function ConfigurationGuard({
   fallback 
 }: ConfigurationGuardProps) {
   const { isConfigured } = useMoodleStatus();
+  const [checkComplete, setCheckComplete] = useState(false);
+  
+  // Aguardar um momento para a inicialização automática
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCheckComplete(true);
+    }, 1000); // 1 segundo para aguardar inicialização
+
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (!checkComplete) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Inicializando configurações...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (!isConfigured) {
     return (
@@ -240,7 +271,9 @@ export function ConfigurationGuard({
             </p>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md">
               <p className="text-sm text-yellow-800">
-                Configure a URL base e token do Moodle nas configurações do sistema.
+                Configure as variáveis de ambiente no Vercel:<br/>
+                - NEXT_PUBLIC_MOODLE_BASE_URL<br/>
+                - NEXT_PUBLIC_MOODLE_TOKEN
               </p>
             </div>
           </div>

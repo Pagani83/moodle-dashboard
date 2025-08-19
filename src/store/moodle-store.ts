@@ -268,23 +268,37 @@ export const useTheme = () => {
 // ACTIONS COMPOSTAS
 // ============================================================================
 
-// Inicializar configuração padrão para desenvolvimento
+// Inicializar configuração automaticamente das variáveis de ambiente
 export const initializeDevConfig = () => {
-  const { setConfig } = useMoodleStore.getState();
+  const { setConfig, isConfigured } = useMoodleStore.getState();
+  
+  // Se já está configurado, não sobrescrever
+  if (isConfigured) {
+    console.log('✅ Moodle já configurado');
+    return;
+  }
   
   // Obter configuração das variáveis de ambiente
-  const devConfig: MoodleConfig = {
+  const envConfig: MoodleConfig = {
     baseUrl: process.env.NEXT_PUBLIC_MOODLE_BASE_URL || defaultConfig.baseUrl,
     token: process.env.NEXT_PUBLIC_MOODLE_TOKEN || '',
     timeout: defaultConfig.timeout,
     defaultCategory: parseInt(process.env.NEXT_PUBLIC_MOODLE_DEFAULT_CATEGORY || '22', 10),
   };
 
-  if (devConfig.token && devConfig.baseUrl) {
-    setConfig(devConfig);
-    console.log('✅ Configuração Moodle inicializada automaticamente');
+  console.log('🔧 Tentando configurar Moodle:', {
+    hasBaseUrl: !!envConfig.baseUrl,
+    hasToken: !!envConfig.token,
+    baseUrl: envConfig.baseUrl.substring(0, 30) + '...'
+  });
+
+  if (envConfig.token && envConfig.baseUrl && envConfig.baseUrl !== '/api/moodle') {
+    setConfig(envConfig);
+    console.log('✅ Configuração Moodle inicializada das variáveis de ambiente');
+    return true;
   } else {
-    console.warn('⚠️ Variáveis de ambiente do Moodle não encontradas');
+    console.log('ℹ️ Variáveis de ambiente do Moodle não encontradas - configuração manual necessária');
+    return false;
   }
 };
 
