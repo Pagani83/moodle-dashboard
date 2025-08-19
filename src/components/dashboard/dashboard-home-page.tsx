@@ -261,9 +261,14 @@ export function DashboardHomePage() {
                   </div>
                 )}
                 {report134Cache.isLoading && (
-                  <div className="flex items-center space-x-2 text-xs text-blue-600 dark:text-blue-400">
-                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
-                    <span>Carregando...</span>
+                  <div className="flex items-center space-x-3 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span className="font-medium">Carregando dados do cache...</span>
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -358,6 +363,7 @@ export function DashboardHomePage() {
               masterData={masterDataQuery}
               summaries={summariesQuery}
               cacheStats={cacheStatsQuery}
+              report134Cache={report134Cache}
             />
           </div>
         )}
@@ -444,15 +450,26 @@ function DashboardContent({
   masterData,
   summaries,
   cacheStats,
+  report134Cache,
 }: {
   masterData: any;
   summaries: any;
   cacheStats: any;
+  report134Cache: any;
 }) {
   // Ocultar o widget do YouTube por padrão; habilite com NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET=true
   const showYouTubeWidget = process.env.NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET === 'true';
   const isLoading = masterData.isLoading || summaries.isLoading;
   const hasError = masterData.isError || summaries.isError;
+
+  // Estados de carregamento específicos para mostrar progresso detalhado
+  const loadingStates = [
+    { name: 'Dashboard Master', loading: masterData.isLoading, icon: Database },
+    { name: 'Resumos de Cursos', loading: summaries.isLoading, icon: BookOpen },
+    { name: 'Cache Report 134', loading: report134Cache.isLoading, icon: FileText },
+  ];
+
+  const activeLoadings = loadingStates.filter(state => state.loading);
 
   if (hasError) {
     return (
@@ -481,9 +498,65 @@ function DashboardContent({
 
       {/* Loading State */}
       {isLoading && (
-        <div className="text-center py-12 bg-slate-50/50 dark:bg-gray-800/30 rounded-xl border border-slate-200/60 dark:border-gray-700/50">
-          <RefreshCw className="h-8 w-8 text-slate-400 dark:text-gray-400 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-gray-400">Carregando dados do Moodle...</p>
+        <div className="text-center py-12 bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-gray-800/40 dark:to-gray-800/20 rounded-xl border border-slate-200/60 dark:border-gray-700/50 shadow-sm">
+          <div className="relative mb-6">
+            <RefreshCw className="h-10 w-10 text-blue-500 dark:text-blue-400 animate-spin mx-auto mb-4" />
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
+              <div className="w-16 h-16 border-4 border-blue-100 dark:border-blue-900 rounded-full"></div>
+              <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-gray-200">
+              Carregando Dashboard
+            </h3>
+            
+            {/* Status específico do que está carregando */}
+            {activeLoadings.length > 0 && (
+              <div className="space-y-2 max-w-md mx-auto">
+                {activeLoadings.map((state, index) => {
+                  const Icon = state.icon;
+                  return (
+                    <div key={state.name} className="flex items-center justify-center space-x-3 text-sm text-slate-600 dark:text-gray-400">
+                      <Icon className="h-4 w-4 text-blue-500" />
+                      <span>Carregando {state.name}...</span>
+                      <div className="flex space-x-1">
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                            style={{
+                              animationDelay: `${(index * 0.3) + (i * 0.1)}s`,
+                            }}
+                          ></div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            <p className="text-slate-600 dark:text-gray-400">
+              Processando dados do Moodle e cache local...
+            </p>
+            
+            <div className="flex justify-center items-center space-x-2 mt-4">
+              <div className="flex space-x-1">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+                    style={{
+                      animationDelay: `${i * 0.1}s`,
+                      animationDuration: '1s'
+                    }}
+                  ></div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
