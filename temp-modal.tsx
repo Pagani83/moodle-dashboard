@@ -177,7 +177,7 @@ export function AcompanhamentoDetailModal({
                         >
                           <widget.icon className="h-5 w-5 text-slate-500 dark:text-gray-500 mt-0.5 flex-shrink-0" />
                           <div>
-                            <div className="font-medium ${theme === "dark" ? "text-gray-100" : "text-slate-900"} text-sm">
+                            <div className={`font-medium ${theme === "dark" ? "text-gray-100" : "text-slate-900"} text-sm`}>
                               {widget.label}
                             </div>
                             <div className="text-xs text-slate-600 dark:text-gray-400">
@@ -248,7 +248,7 @@ export function AcompanhamentoDetailModal({
 
             {/* Cursos Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold ${theme === "dark" ? "text-gray-100" : "text-slate-900"}">
+              <h3 className={`text-lg font-semibold ${theme === "dark" ? "text-gray-100" : "text-slate-900"}`}>
                 Detalhamento por Curso
               </h3>
             {(!acompanhamento.cursos || acompanhamento.cursos.length === 0) ? (
