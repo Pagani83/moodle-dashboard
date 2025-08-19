@@ -449,6 +449,8 @@ function DashboardContent({
   summaries: any;
   cacheStats: any;
 }) {
+  // Ocultar o widget do YouTube por padrão; habilite com NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET=true
+  const showYouTubeWidget = process.env.NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET === 'true';
   const isLoading = masterData.isLoading || summaries.isLoading;
   const hasError = masterData.isError || summaries.isError;
 
@@ -470,8 +472,12 @@ function DashboardContent({
 
   return (
     <div className="space-y-6">
-      {/* YouTube Analytics Widget */}
-      <YouTubeWidget />
+      {showYouTubeWidget && (
+        <>
+          {/* YouTube Analytics Widget */}
+          <YouTubeWidget />
+        </>
+      )}
 
       {/* Loading State */}
       {isLoading && (
