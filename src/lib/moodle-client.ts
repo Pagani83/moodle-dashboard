@@ -45,7 +45,6 @@ export class MoodleClient {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Moodle-Client-TypeScript/1.0',
         'Cache-Control': 'no-cache',
       },
       // Configurações para CORS e network
