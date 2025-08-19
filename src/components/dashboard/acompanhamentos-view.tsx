@@ -122,7 +122,7 @@ export default function AcompanhamentosView() {
     const data = filtered134;
     const total = data.length;
     const concluidos = data.filter((r: any) => r.student_status === 'CONCLUÍDO').length;
-    const ativos = data.filter((r: any) => r.student_status === 'ATIVO').length;
+    const ativos = data.filter((r: any) => r.student_status === 'CURSANDO').length;
     const taxa = total ? Math.round((concluidos / total) * 1000) / 10 : 0;
     const cursosUnicos = new Set(data.map((r: any) => r.course_id)).size;
     return { total, concluidos, ativos, taxa, cursosUnicos };

@@ -1260,9 +1260,9 @@ function PerformanceWidget({ data, onRemove }: WidgetProps) {
     
     const total = data.length;
     const concluidos = data.filter(row => row.student_status === 'CONCLUÍDO').length;
-    const ativos = data.filter(row => row.student_status === 'ATIVO').length;
+    const ativos = data.filter(row => row.student_status === 'CURSANDO').length;
     const inativos = data.filter(row => 
-      row.student_status.includes('INATIVO') || row.student_status === 'NUNCA_ACESSOU'
+      row.student_status === 'REPROVADO_EVADIDO' || row.student_status === 'NUNCA_ACESSOU'
     ).length;
     
     const taxaConclusao = Math.round((concluidos / total) * 100);

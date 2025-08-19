@@ -362,9 +362,9 @@ export function useDashboardMetrics(data: DashboardMasterRecord[] | undefined) {
   const uniqueCourses = new Set(data.map(record => record.course_id)).size;
   const totalStudents = data.length;
   const completedStudents = data.filter(record => record.student_status === 'CONCLUÍDO').length;
-  const activeStudents = data.filter(record => record.student_status === 'ATIVO').length;
+  const activeStudents = data.filter(record => record.student_status === 'CURSANDO').length;
   const inactiveStudents = data.filter(record => 
-    record.student_status.includes('INATIVO') || record.student_status === 'NUNCA_ACESSOU'
+    record.student_status === 'REPROVADO_EVADIDO' || record.student_status === 'NUNCA_ACESSOU'
   ).length;
   
   const completionRate = totalStudents > 0 ? (completedStudents / totalStudents) * 100 : 0;

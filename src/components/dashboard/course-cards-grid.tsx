@@ -73,11 +73,10 @@ function CourseCard({ course }: { course: { id: number; name: string; rows: any[
 
   const total = course.rows.length; // Inscritos totais
   const concluidos = course.rows.filter((r: any) => r.student_status === 'CONCLUÍDO').length; // Concluintes totais
-  const cursando = course.rows.filter((r: any) => r.student_status === 'CURSANDO' || r.student_status === 'ATIVO').length; // Cursando
+  const cursando = course.rows.filter((r: any) => r.student_status === 'CURSANDO').length; // Cursando
   const reprovadosEvadidos = course.rows.filter((r: any) => 
     r.student_status === 'REPROVADO_EVADIDO' || 
-    r.student_status === 'INATIVO_30_DIAS' || 
-    r.student_status === 'INATIVO_7_DIAS'
+    r.student_status === 'NUNCA_ACESSOU'
   ).length;
   const mediaProgresso = Math.round((course.rows.reduce((s: number, r: any) => s + (Number(r.progress_percentage) || 0), 0) / Math.max(1, total)) * 10) / 10;
   const totalQuizzes = course.rows.reduce((s: number, r: any) => s + (Number(r.total_quizzes) || 0), 0);
