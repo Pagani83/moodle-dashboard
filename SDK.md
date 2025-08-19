@@ -254,7 +254,7 @@ npm run build
 
 # 2. Configurar package.json
 {
-  "name": "@seu-usuario/moodle-dashboard-sdk",
+  "name": "@Pagani83/moodle-dashboard-sdk",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

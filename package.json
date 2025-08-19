@@ -2,12 +2,12 @@
   "name": "moodle-dashboard",
   "version": "1.0.0",
   "description": "Dashboard moderno para gestão educacional com integração YouTube - Next.js 15, TypeScript, Tailwind CSS",
-  "author": "CJUD Development Team",
+  "author": "Pagani83",
   "license": "MIT",
-  "homepage": "https://github.com/seu-usuario/moodle-dashboard",
+  "homepage": "https://github.com/Pagani83/moodle-dashboard",
   "repository": {
     "type": "git",
-    "url": "https://github.com/seu-usuario/moodle-dashboard.git"
+    "url": "https://github.com/Pagani83/moodle-dashboard.git"
   },
   "keywords": [
     "moodle",

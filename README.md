@@ -59,7 +59,7 @@ Um dashboard moderno e completo para gestão de dados do Moodle com integração
 
 ### **1. Clone o Repositório**
 ```bash
-git clone https://github.com/seu-usuario/moodle-dashboard.git
+git clone https://github.com/Pagani83/moodle-dashboard.git
 cd moodle-dashboard
 ```
 
@@ -247,7 +247,7 @@ Este projeto está sob a licença **MIT**. Veja [LICENSE](LICENSE) para mais det
 **Desenvolvido com ❤️ para gestão educacional moderna**
 
 - 🌐 **Demo**: [moodle-dashboard.vercel.app](https://moodle-dashboard.vercel.app)
-- 📧 **Contato**: [seu-email@example.com](mailto:seu-email@example.com)
+- 📧 **GitHub**: [@Pagani83](https://github.com/Pagani83)
 - 📺 **YouTube**: [@cjudtjrs](https://youtube.com/@cjudtjrs)
 
 ---
