@@ -11,12 +11,12 @@ export const queryClient = new QueryClient({
       // Configurações baseadas na estratégia de cache descoberta
       staleTime: 5 * 60 * 1000, // 5 minutos padrão
       gcTime: 30 * 60 * 1000, // 30 minutos garbage collection
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retry: 1, // Reduzir de 3 para 1 tentativa apenas
+      retryDelay: 5000, // 5 segundos fixo ao invés de backoff exponencial
       
       // Configurações para melhor UX
       refetchOnWindowFocus: false,
-      refetchOnMount: true,
+      refetchOnMount: true, // Voltar para true - necessário para carregar dados
       refetchOnReconnect: true,
       
       // Error handling

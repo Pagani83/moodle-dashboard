@@ -88,7 +88,18 @@ export class YouTubeClient {
     );
 
     if (!response.ok) {
-      throw new Error(`YouTube API Error: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      
+      if (response.status === 403) {
+        const errorMsg = errorData.error?.message || '';
+        if (errorMsg.includes('quota')) {
+          throw new Error('Quota da YouTube API excedida. Tente novamente mais tarde.');
+        } else {
+          throw new Error('YouTube Data API v3 não está ativada no Google Cloud Console. Ative em: console.cloud.google.com/apis/library');
+        }
+      } else {
+        throw new Error(`YouTube API Error: ${response.status} ${response.statusText}`);
+      }
     }
 
     const data = await response.json();

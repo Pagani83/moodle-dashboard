@@ -34,6 +34,8 @@ export function useYouTubeChannel(
     enabled: enabled && !!config.apiKey,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos (substitui cacheTime)
+    retry: 1, // Reduzir para 1 tentativa apenas
+    retryDelay: 5000, // 5 segundos de delay
   });
 }
 
@@ -59,6 +61,8 @@ export function useYouTubeRecentVideos(
     enabled: enabled && !!config.apiKey,
     staleTime: 10 * 60 * 1000, // 10 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos
+    retry: 1, // Reduzir para 1 tentativa apenas
+    retryDelay: 5000, // 5 segundos de delay
   });
 }
 
@@ -84,6 +88,8 @@ export function useYouTubeGrowth(
     enabled: enabled && !!config.apiKey,
     staleTime: 60 * 60 * 1000, // 1 hora
     gcTime: 2 * 60 * 60 * 1000, // 2 horas
+    retry: 1, // Reduzir para 1 tentativa apenas
+    retryDelay: 5000, // 5 segundos de delay
   });
 }
 
@@ -109,6 +115,8 @@ export function useYouTubeTrending(
     enabled: enabled && !!config.apiKey,
     staleTime: 30 * 60 * 1000, // 30 minutos
     gcTime: 60 * 60 * 1000, // 1 hora
+    retry: 1, // Reduzir para 1 tentativa apenas
+    retryDelay: 5000, // 5 segundos de delay
   });
 }
 
