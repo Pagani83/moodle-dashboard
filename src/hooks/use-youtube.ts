@@ -6,13 +6,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { YouTubeClient, type ChannelInfo, type VideoStatistics, type AnalyticsData } from '@/lib/youtube-client';
 
-// Configuração padrão - você deve colocar sua API Key aqui
+// Configuração padrão - usa variáveis de ambiente
 const DEFAULT_CONFIG = {
   apiKey: process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || '', 
-  channelHandle: '@seucanal', // Substitua pelo seu handle
+  channelHandle: process.env.NEXT_PUBLIC_YOUTUBE_CHANNEL_HANDLE || '@cjudtjrs',
   channelId: undefined as string | undefined,
-  // Ou use channelId se preferir:
-  // channelId: 'UCxxxxxxxxxxxxxx'
 };
 
 // ============================================================================
