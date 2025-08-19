@@ -1,0 +1,57 @@
+{
+  "name": "moodle-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard moderno para gestão educacional com integração YouTube - Next.js 15, TypeScript, Tailwind CSS",
+  "author": "CJUD Development Team",
+  "license": "MIT",
+  "homepage": "https://github.com/seu-usuario/moodle-dashboard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seu-usuario/moodle-dashboard.git"
+  },
+  "keywords": [
+    "moodle",
+    "dashboard",
+    "education",
+    "youtube",
+    "nextjs",
+    "typescript",
+    "tailwindcss",
+    "react-query"
+  ],
+  "private": false,
+  "scripts": {
+    "dev": "next dev --turbopack -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.1",
+    "@tanstack/query-sync-storage-persister": "^5.85.3",
+    "@tanstack/react-query": "^5.85.3",
+    "@tanstack/react-query-devtools": "^5.85.3",
+    "@tanstack/react-query-persist-client": "^5.85.3",
+    "axios": "^1.11.0",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.540.0",
+    "next": "15.4.6",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-hook-form": "^7.62.0",
+    "recharts": "^3.1.2",
+    "zod": "^4.0.17",
+    "zustand": "^5.0.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

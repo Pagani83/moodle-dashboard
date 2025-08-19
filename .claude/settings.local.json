@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(mkdir backup)",
+      "Bash(cp README.md backup/)",
+      "Bash(cp openapi_cjud.yaml backup/)",
+      "Bash(cp dashboard_master_cjud_final.sql backup/)",
+      "Bash(cp consultas_optimizadas.sql backup/)",
+      "Bash(cp app/config.json backup/)",
+      "Bash(rm:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(mv:*)",
+      "Bash(true)",
+      "Bash(cp:*)",
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run dev)",
+      "Bash(grep -r \"makeRequest.*configurable\" src/)",
+      "Bash(taskkill:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
