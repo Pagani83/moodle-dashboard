@@ -1,0 +1,27 @@
+name: Daily Vercel Update
+on:
+  schedule:
+    # Executa às 5:00 AM UTC todos os dias (ajuste para seu fuso horário)
+    - cron: '0 5 * * *'
+  workflow_dispatch: # Permite execução manual também
+
+jobs:
+  trigger-vercel-redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Update timestamp
+        run: |
+          echo "Last updated: $(date)" > .vercel-update
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .vercel-update
+          git commit -m "chore: daily auto-update $(date +'%Y-%m-%d %H:%M')" || exit 0
+          git push
