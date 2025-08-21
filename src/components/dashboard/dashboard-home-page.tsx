@@ -457,8 +457,8 @@ function DashboardContent({
   cacheStats: any;
   report134Cache: any;
 }) {
-  // Ocultar o widget do YouTube por padrão; habilite com NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET=true
-  const showYouTubeWidget = process.env.NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET === 'true';
+  // Mostrar o widget do YouTube por padrão; oculte com NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET=false
+  const showYouTubeWidget = process.env.NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET !== 'false';
   const isLoading = masterData.isLoading || summaries.isLoading;
   const hasError = masterData.isError || summaries.isError;
 
