@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BookOpen, Eye, Edit, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useMoodleStore } from '@/store/moodle-store';
+import { useAcompanhamentosSync } from '@/hooks/use-acompanhamentos';
 import type { Acompanhamento } from '@/types/moodle';
 
 interface AcompanhamentosGridProps {
@@ -14,8 +15,23 @@ interface AcompanhamentosGridProps {
 }
 
 export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, onDelete, reportData = [] }: AcompanhamentosGridProps) {
-  const { acompanhamentos, theme } = useMoodleStore();
+  const { acompanhamentos: localAcompanhamentos, theme } = useMoodleStore();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  // Hook para sincronizar com API
+  const {
+    acompanhamentos: persistentAcompanhamentos,
+    isLoading: isLoadingPersistent,
+    createAcompanhamento,
+    updateAcompanhamento,
+    deleteAcompanhamento,
+  } = useAcompanhamentosSync();
+
+  console.log('AcompanhamentosGrid - persistentAcompanhamentos:', persistentAcompanhamentos);
+  console.log('AcompanhamentosGrid - isLoading:', isLoadingPersistent);
+
+  // Usar dados persistentes se disponíveis, senão usar locais
+  const acompanhamentos = persistentAcompanhamentos.length > 0 ? persistentAcompanhamentos : localAcompanhamentos;
 
   const handleDelete = (acompanhamento: Acompanhamento) => {
     const confirmation = window.confirm(`Tem certeza que deseja excluir o acompanhamento "${acompanhamento.nome}"?`);
@@ -60,6 +76,24 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
     }
     setExpandedCards(newExpanded);
   };
+
+  if (isLoadingPersistent) {
+    return (
+      <div className="text-center py-16 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-800 dark:to-slate-700 rounded-2xl">
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-lg font-medium text-slate-700 dark:text-slate-300">
+              Carregando acompanhamentos...
+            </span>
+          </div>
+          <p className="text-slate-600 dark:text-slate-400">
+            Sincronizando dados com o servidor
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!acompanhamentos || acompanhamentos.length === 0) {
     return (

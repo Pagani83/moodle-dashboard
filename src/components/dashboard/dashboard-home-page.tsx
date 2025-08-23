@@ -79,6 +79,11 @@ export function DashboardHomePage() {
 
   // Hook para buscar dados do cache local com fallback para arquivos de storage
   const report134Cache = useCachedReport134();
+  
+  console.log('Dashboard - report134Cache:', report134Cache);
+  console.log('Dashboard - report134Cache.data:', report134Cache.data);
+  console.log('Dashboard - report134Cache.isLoading:', report134Cache.isLoading);
+  console.log('Dashboard - report134Cache.error:', report134Cache.error);
 
   // Estado para modal de criação/edição
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -337,8 +342,17 @@ export function DashboardHomePage() {
               </button>
             </div>
             
-            {/* Componente de Acompanhamentos com API */}
-            <AcompanhamentosView />
+            {/* Grid de Cards de Acompanhamentos */}
+            <AcompanhamentosGrid 
+              onOpenDetailModal={(acompanhamento) => {
+                setModalAcompanhamento(acompanhamento);
+                setModalOpen(true);
+              }}
+              onCreateNew={handleCreateNew}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              reportData={(report134Cache.data?.data as any[]) || []}
+            />
           </div>
         )}
 
