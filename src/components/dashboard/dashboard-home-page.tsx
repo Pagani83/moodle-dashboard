@@ -337,17 +337,8 @@ export function DashboardHomePage() {
               </button>
             </div>
             
-            {/* Grid de Cards de Acompanhamentos */}
-            <AcompanhamentosGrid 
-              onOpenDetailModal={(acompanhamento) => {
-                setModalAcompanhamento(acompanhamento);
-                setModalOpen(true);
-              }}
-              onCreateNew={handleCreateNew}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              reportData={(report134Cache.data?.data as any[]) || []}
-            />
+            {/* Componente de Acompanhamentos com API */}
+            <AcompanhamentosView />
           </div>
         )}
 
