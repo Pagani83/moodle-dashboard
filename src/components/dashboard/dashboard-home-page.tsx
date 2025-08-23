@@ -339,6 +339,7 @@ export function DashboardHomePage() {
             <Report134View 
               status={report134Status}
               forceUpdate={forceReport134Update}
+              report134Cache={report134Cache}
             />
           </div>
         )}
@@ -768,17 +769,21 @@ function ConfigurationView({ config }: { config: any }) {
 function Report134View({
   status,
   forceUpdate,
+  report134Cache,
 }: {
   status: any;
   forceUpdate: any;
+  report134Cache: any;
 }) {
   const restoreFromFile = useRestoreReport134FromFile();
   const [forcingCache, setForcingCache] = useState(false);
   const [lastUpdateMsg, setLastUpdateMsg] = useState<string | null>(null);
 
-  // Helpers para formatar datas do status
-  const lastFetchDate: Date | null = status?.full?.lastFetch
-    ? new Date(status.full.lastFetch)
+  // Helpers para formatar datas do status - usando dados do cache ativo
+  const lastFetchDate: Date | null = report134Cache.data?.meta?.lastFetch
+    ? new Date(report134Cache.data.meta.lastFetch)
+    : report134Cache.data?.meta?.lastUpdate
+    ? new Date(report134Cache.data.meta.lastUpdate)
     : null;
   const nextScheduledDate: Date | null = status?.full?.nextScheduled
     ? new Date(status.full.nextScheduled)
@@ -797,7 +802,10 @@ function Report134View({
               Relatório 134 - Principal do Sistema
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Cache diário atualizado às 5h da manhã | ID: {REPORT_134_CONFIG.id}
+              {lastFetchDate 
+                ? `Última atualização: ${fmt(lastFetchDate)} | Próxima às 5:00 AM UTC` 
+                : 'Cache diário atualizado às 5h da manhã'
+              } | ID: {REPORT_134_CONFIG.id}
             </p>
             <p className="text-xs text-orange-600 font-medium mt-1">
               🔥 DADOS PUROS: Busca sem filtros, filtragem será feita após cache
@@ -846,7 +854,19 @@ function Report134View({
 
         {/* Infos de atualização */}
         <div className="flex flex-wrap items-center gap-4 mb-2 text-xs text-gray-600">
-          <span><span className="font-medium">Última atualização:</span> {fmt(lastFetchDate)}</span>
+          <span className="flex items-center gap-1">
+            <span className="font-medium">Última atualização:</span> 
+            <span className={`${
+              lastFetchDate && (Date.now() - lastFetchDate.getTime()) < 6 * 60 * 60 * 1000 
+                ? 'text-green-600 font-medium' 
+                : 'text-orange-600'
+            }`}>
+              {fmt(lastFetchDate)}
+            </span>
+            {lastFetchDate && (Date.now() - lastFetchDate.getTime()) < 60 * 60 * 1000 && (
+              <span className="inline-flex h-2 w-2 bg-green-400 rounded-full animate-pulse ml-1" title="Dados muito recentes (< 1h)"></span>
+            )}
+          </span>
           <span>•</span>
           <span><span className="font-medium">Próx. agendamento:</span> {fmt(nextScheduledDate)}</span>
           {lastUpdateMsg && (
