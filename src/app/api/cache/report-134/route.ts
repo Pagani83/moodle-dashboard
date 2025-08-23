@@ -59,6 +59,11 @@ export async function GET(req: NextRequest) {
           if (k) meta[k] = v;
         });
       }
+      
+      // Adicionar informações universais sobre o arquivo (timestamp do sistema de arquivos)
+      const fileStats = await fs.stat(latestFile.path);
+      const universalLastUpdate = new Date(fileStats.mtime).toISOString();
+      
       let data: any[] = [];
       if (dataSheet) {
         const headers: string[] = [];
@@ -72,7 +77,20 @@ export async function GET(req: NextRequest) {
           data.push(rowObj);
         }
       }
-      return NextResponse.json({ ok: true, hasFile: true, file: { name: latestFile.name, size: latestFile.size }, meta, data }, {
+      
+      // Retornar com timestamp universal
+      return NextResponse.json({ 
+        ok: true, 
+        hasFile: true, 
+        file: { 
+          name: latestFile.name, 
+          size: latestFile.size,
+          universalLastUpdate, // Timestamp baseado no sistema de arquivos (universal)
+          cacheBuster: Date.now() // Para garantir que não há cache no lado cliente
+        }, 
+        meta, 
+        data 
+      }, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
@@ -112,12 +130,29 @@ export async function POST(req: NextRequest) {
         fetchDuration = Date.now() - startTime;
         lastFetch = new Date().toISOString();
         
+        // Criar um arquivo temporário com timestamp universal para indicar atualização
+        const tempTimestamp = getTimestamp();
+        const tempFile = path.join(STORAGE_DIR, `temp_refresh_${tempTimestamp}.txt`);
+        await fs.writeFile(tempFile, JSON.stringify({
+          refreshedAt: lastFetch,
+          fetchDuration,
+          isForceRefresh: true
+        }));
+        
         return NextResponse.json({ 
           ok: true, 
           refreshTriggered: true, 
           message: 'Force refresh completed - fresh data will be available on next request',
           timestamp: lastFetch,
-          fetchDuration 
+          universalTimestamp: lastFetch, // Timestamp universal para todos os usuários
+          fetchDuration,
+          cacheBuster: Date.now() // Para invalidar qualquer cache local
+        }, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
         });
         
       } catch (error) {

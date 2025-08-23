@@ -34,8 +34,14 @@ jobs:
             echo "🔄 Refreshing Moodle data via API..."
             # Usar a URL principal do deployment
             VERCEL_URL="https://moodle-dashboard.vercel.app"
-            curl -f "${VERCEL_URL}/api/auto-update?token=${CRON_SECRET}&refresh_data=true" || echo "⚠️  API call failed, continuing with git update..."
-            sleep 5
+            
+            # Fazer a requisição e aguardar até 60 segundos por uma resposta
+            echo "⏱️  Aguardando resposta da API (timeout: 60s)..."
+            curl -f --max-time 60 "${VERCEL_URL}/api/auto-update?token=${CRON_SECRET}&refresh_data=true" || echo "⚠️  API call failed or timed out, continuing with git update..."
+            
+            # Aguardar tempo adicional para processamento
+            echo "⏳ Aguardando processamento completo..."
+            sleep 10
           else
             echo "⚠️  CRON_SECRET not set, skipping API data refresh"
           fi

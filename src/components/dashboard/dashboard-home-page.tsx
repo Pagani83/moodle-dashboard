@@ -80,11 +80,13 @@ export function DashboardHomePage() {
             // Verificar se tem dados válidos
             if (data.data && Array.isArray(data.data) && data.data.length > 0) {
               console.log('✅ Dados encontrados:', data.data.length, 'registros');
-              // Adicionar informação sobre a fonte
+              // Adicionar informação sobre a fonte e timestamp universal
               data.meta = { 
                 ...data.meta, 
                 source: 'cache',
-                lastUpdate: data.meta?.lastFetch || new Date().toISOString()
+                lastUpdate: data.meta?.lastFetch || new Date().toISOString(),
+                // Usar timestamp universal do arquivo (baseado no sistema de arquivos)
+                universalLastUpdate: data.file?.universalLastUpdate || data.meta?.lastFetch || new Date().toISOString()
               };
               return data;
             } else if (data.hasFile === false) {
@@ -115,10 +117,10 @@ export function DashboardHomePage() {
           };
         }
       },
-      staleTime: 0, // Sempre buscar dados frescos do servidor
+      staleTime: 30 * 1000, // Cache por 30 segundos para evitar muitas requisições
       gcTime: 5 * 60 * 1000, // 5 minutos para garbage collection
-      refetchOnMount: true, // Sempre refetch ao montar o componente
-      refetchOnWindowFocus: true, // Refetch quando usuário voltar à janela
+      refetchOnMount: false, // Não fazer refetch automático ao montar
+      refetchOnWindowFocus: false, // Não refetch quando usuário voltar à janela
       retry: (failureCount, error) => {
         // Tentar até 2 vezes em caso de erro de rede
         return failureCount < 2;
@@ -781,7 +783,10 @@ function Report134View({
   const [lastUpdateMsg, setLastUpdateMsg] = useState<string | null>(null);
 
   // Helpers para formatar datas do status - usando dados do cache ativo
-  const lastFetchDate: Date | null = report134Cache.data?.meta?.lastFetch
+  // Usar timestamp universal do arquivo (mais confiável que cookies/localStorage)
+  const lastFetchDate: Date | null = report134Cache.data?.meta?.universalLastUpdate
+    ? new Date(report134Cache.data.meta.universalLastUpdate)
+    : report134Cache.data?.meta?.lastFetch
     ? new Date(report134Cache.data.meta.lastFetch)
     : report134Cache.data?.meta?.lastUpdate
     ? new Date(report134Cache.data.meta.lastUpdate)
@@ -832,13 +837,16 @@ function Report134View({
                 setForcingCache(true);
                 forceUpdate.mutate(undefined, {
                   onSuccess: (payload: any) => {
-                    const when = payload?.lastFetch ? new Date(payload.lastFetch) : new Date();
+                    // Sempre atualizar timestamp após sucesso da API
+                    const when = payload?.timestamp || payload?.universalTimestamp || payload?.lastFetch || new Date();
                     const durMs = typeof payload?.fetchDuration === 'number' ? payload.fetchDuration : 0;
                     const secs = Math.round(durMs / 100) / 10;
-                    setLastUpdateMsg(`Atualizado em ${when.toLocaleString('pt-BR')} • ${secs || 0}s`);
+                    setLastUpdateMsg(`Atualizado em ${new Date(when).toLocaleString('pt-BR')} • ${secs || 0}s`);
                     
-                    // Invalidar a query do cache para refletir os dados atualizados no timestamp principal
-                    queryClient.invalidateQueries({ queryKey: ['report134-cache'] });
+                    // Aguardar um pouco antes de invalidar cache para garantir que API terminou
+                    setTimeout(() => {
+                      queryClient.invalidateQueries({ queryKey: ['report134-cache'] });
+                    }, 2000); // 2 segundos para dar tempo da API salvar
                   },
                   onSettled: () => setForcingCache(false),
                 });
