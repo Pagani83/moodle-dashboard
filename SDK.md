@@ -29,6 +29,29 @@ import {
 } from '@/components/dashboard'
 ```
 
+## ⚡ **Performance & Otimizações (NOVO)**
+
+### 🚀 **Otimizações Implementadas**
+
+#### **YouTube API - Preservação de Quota**
+- ✅ **Redução drástica**: ~400 → ~10 calls/dia (96% menos)
+- ✅ **Cache agressivo**: 1-6 horas vs 5 minutos anterior
+- ✅ **Cache persistente**: localStorage preserva dados entre sessões
+- ✅ **Single-call strategy**: 1 chamada por sessão (vs 4 anteriores)
+- ✅ **Quota monitor**: Rastreamento visual de uso diário
+
+#### **Interface Responsiva**
+- ✅ **Cards otimizados**: Altura mínima fixa (80px)
+- ✅ **Layout flexível**: Distribuição uniforme com flexbox
+- ✅ **Texto centralizado**: Eliminação de overflow visual
+- ✅ **Typography responsiva**: Escala automática (text-[10px])
+
+#### **Cache Inteligente**
+- ✅ **React Query v5**: Configurações agressivas de cache
+- ✅ **ExcelJS Storage**: Backup automático de 7 arquivos
+- ✅ **Auto-update**: Cron diário (5h UTC) com force refresh
+- ✅ **Fallback resiliente**: Sistema de cache em camadas
+
 ### 🎯 **Hooks Customizados**
 
 #### `useCachedReport134()`
@@ -52,9 +75,12 @@ function MyComponent() {
 **Funcionalidades:**
 - ✅ Cache inteligente de 30 segundos
 - ✅ Fallback para arquivos de storage
+- ✅ **Auto-update com Cron job diário (5h UTC)**
+- ✅ **Storage resiliente com backup dos últimos 7 arquivos**
 - ✅ Timestamps universais
 - ✅ Retry automático com backoff exponencial
 - ✅ Error handling robusto
+- ✅ **Force refresh API** para dados frescos do Moodle
 
 #### `extractUniqueCoursesFromReport()`
 Utilitário para extrair cursos únicos dos dados do Report 134.
@@ -113,6 +139,199 @@ import { Database } from 'lucide-react'
 - ✅ 4 esquemas de cores predefinidos
 - ✅ Responsivo e acessível
 - ✅ Hover effects suaves
+
+## 🔄 **Sistema de Auto-Update Avançado**
+
+O SDK inclui um **sistema completo de auto-update** para manter dados sempre atualizados sem intervenção manual.
+
+### **API Endpoints**
+
+#### `/api/auto-update`
+Endpoint principal para execução de cron jobs automáticos.
+
+```typescript
+// Trigger simples (apenas log)
+GET /api/auto-update?token=CRON_SECRET
+
+// Force refresh completo
+GET /api/auto-update?token=CRON_SECRET&refresh_data=true
+```
+
+**Response:**
+```json
+{
+  "message": "Auto-update triggered successfully",
+  "timestamp": "2025-08-23T12:00:00.000Z",
+  "dataRefreshed": true,
+  "dataRefreshResult": { "ok": true, "recordsUpdated": 1234 },
+  "nextUpdate": "2025-08-24T05:00:00.000Z",
+  "environment": "production"
+}
+```
+
+#### `/api/cache/report-134`
+Sistema de cache resiliente com storage em arquivos Excel.
+
+```typescript
+// Buscar dados mais recentes
+GET /api/cache/report-134?latest=1
+
+// Force refresh (buscar dados frescos do Moodle)
+POST /api/cache/report-134?force_refresh=true
+```
+
+**GET Response:**
+```json
+{
+  "ok": true,
+  "hasFile": true,
+  "file": {
+    "name": "report134_20250823_125726.xlsx",
+    "size": 45678,
+    "universalLastUpdate": "2025-08-23T12:57:26.000Z",
+    "cacheBuster": 1692792000000
+  },
+  "meta": {
+    "lastFetch": "2025-08-23T12:57:20.000Z",
+    "fetchDuration": 3456,
+    "totalRows": 1234
+  },
+  "data": [
+    { "courseid": 1, "nome": "Curso A", "status": "CURSANDO" }
+    // ... dados do relatório
+  ]
+}
+```
+
+**POST Response (Force Refresh):**
+```json
+{
+  "ok": true,
+  "refreshTriggered": true,
+  "message": "Force refresh completed - fresh data will be available on next request",
+  "timestamp": "2025-08-23T12:58:00.000Z",
+  "universalTimestamp": "2025-08-23T12:58:00.000Z",
+  "fetchDuration": 2345,
+  "cacheBuster": 1692792480000
+}
+```
+
+### **Configuração Vercel Cron**
+
+```json
+// vercel.json
+{
+  "crons": [
+    {
+      "path": "/api/auto-update",
+      "schedule": "0 5 * * *"  // Diário às 5h UTC
+    }
+  ]
+}
+```
+
+### **Variáveis de Ambiente**
+
+```env
+# .env.local
+CRON_SECRET=sua_chave_secreta_forte_para_proteger_cron_jobs
+```
+
+### **Hook de Auto-Update**
+
+```typescript
+import { useQuery } from '@tanstack/react-query'
+
+// Hook personalizado para trigger manual de auto-update
+export function useAutoUpdate() {
+  return useMutation({
+    mutationFn: async (forceRefresh = false) => {
+      const params = new URLSearchParams({
+        token: process.env.CRON_SECRET!,
+        ...(forceRefresh && { refresh_data: 'true' })
+      })
+      
+      const response = await fetch(`/api/auto-update?${params}`)
+      return response.json()
+    }
+  })
+}
+
+// Uso no componente
+function AdminPanel() {
+  const autoUpdate = useAutoUpdate()
+  
+  const handleForceUpdate = () => {
+    autoUpdate.mutate(true) // Force refresh dos dados
+  }
+  
+  return (
+    <button onClick={handleForceUpdate}>
+      Force Update {autoUpdate.isLoading && '⏳'}
+    </button>
+  )
+}
+```
+
+### **Sistema de Storage**
+
+**Estrutura de arquivos:**
+```
+storage/report134/
+├── report134_20250823_125726.xlsx    ← Mais recente
+├── report134_20250823_130742.xlsx    ← Backup -1
+├── report134_20250823_131116.xlsx    ← Backup -2
+├── ...                               ← Até 7 arquivos
+└── temp_refresh_20250823_125455.txt  ← Indicador de refresh
+```
+
+**Funcionalidades automáticas:**
+- ✅ **Backup rotativo** - Mantém últimos 7 arquivos
+- ✅ **Limpeza automática** - Remove arquivos antigos
+- ✅ **Timestamp universal** - Nome baseado em UTC
+- ✅ **Estrutura Excel** - Sheets 'meta' e 'data' separados
+- ✅ **Fallback resiliente** - Se API falhar, usa arquivo mais recente
+
+### **Fluxo de Auto-Update**
+
+```mermaid
+graph TD
+    A[Vercel Cron - 5h UTC] --> B[/api/auto-update]
+    B --> C{refresh_data=true?}
+    C -->|Yes| D[POST /api/cache/report-134?force_refresh=true]
+    C -->|No| E[Log execution only]
+    D --> F[Fetch fresh data from Moodle]
+    F --> G[Save new Excel file with timestamp]
+    G --> H[Delete old files - keep last 7]
+    H --> I[Client fetches via useCachedReport134]
+    I --> J[GET /api/cache/report-134?latest=1]
+    J --> K[Updated data in Dashboard]
+```
+
+### **Monitoramento e Logs**
+
+```typescript
+// Verificar status do último auto-update
+const checkAutoUpdateStatus = async () => {
+  const response = await fetch('/api/auto-update?token=CRON_SECRET')
+  const status = await response.json()
+  
+  console.log('Last update:', status.timestamp)
+  console.log('Next update:', status.nextUpdate)
+  console.log('Environment:', status.environment)
+}
+```
+
+### **Tratamento de Erros**
+
+```typescript
+// O sistema inclui tratamento robusto de erros:
+// ✅ Token inválido → 401 Unauthorized
+// ✅ Falha na busca de dados → Fallback para cache
+// ✅ Arquivo corrompido → Usa backup anterior
+// ✅ Storage cheio → Limpeza automática
+// ✅ Timeout → Retry com backoff exponencial
+```
 
 ### 🖼️ **Views Principais**
 
@@ -347,7 +566,7 @@ function MyComponent() {
 ## 📦 Componentes Principais
 
 ### `<YouTubeWidget />`
-Widget compacto para exibição de métricas do YouTube.
+Widget compacto para exibição de métricas do YouTube **com otimização de quota**.
 
 ```tsx
 import { YouTubeWidget } from '@/components/youtube/youtube-widget'
@@ -362,7 +581,11 @@ import { YouTubeWidget } from '@/components/youtube/youtube-widget'
 - ✅ Dados em tempo real da YouTube API
 - ✅ Layout compacto (256px width)
 - ✅ Estado retrátil/expansível
-- ✅ Cache inteligente (5min)
+- ✅ **Cache agressivo otimizado** (1-6 horas staleTime)
+- ✅ **Preservação de quota** - Redução de ~400 para ~10 calls/dia
+- ✅ **Cache persistente** - localStorage entre sessões
+- ✅ **Estratégia single-call** - 1 chamada por sessão
+- ✅ **Monitor de quota visual** - Indicador de uso diário
 - ✅ Tema dark/light automático
 
 ### `<DashboardHomePage />`
@@ -483,13 +706,31 @@ NEXTAUTH_SECRET=sua_chave_secreta_forte
 ## �🔧 Hooks Customizados
 
 ### `useYoutube()`
-Hook para dados do YouTube com cache.
+Hook para dados do YouTube **com cache otimizado e preservação de quota**.
 
 ```tsx
 import { useYoutube } from '@/hooks/use-youtube'
 
 const { data, isLoading, error } = useYoutube()
 ```
+
+**Configuração de Cache Otimizada:**
+```typescript
+{
+  staleTime: 1 * 60 * 60 * 1000,     // 1 hora
+  gcTime: 6 * 60 * 60 * 1000,        // 6 horas  
+  refetchOnWindowFocus: false,        // Não refetch no foco
+  refetchOnMount: false,              // Não refetch no mount
+  refetchOnReconnect: false,          // Não refetch na reconexão
+  retry: 1,                           // Apenas 1 retry
+}
+```
+
+**Cache Persistente:**
+- ✅ localStorage para persistir dados entre sessões
+- ✅ Quota monitor para rastrear uso diário da API
+- ✅ Estratégia single-call (1 chamada por sessão)
+- ✅ Fallback para dados cached em caso de erro
 
 **Retorna:**
 ```typescript
@@ -750,6 +991,9 @@ npm publish
 - **Tailwind CSS** 4+
 - **TanStack Query** 5+
 - **Zustand** 4+
+- **ExcelJS** 4+ (para sistema de cache)
+- **Node.js** 18+ (para file system e cron jobs)
+- **Vercel/Netlify** (para cron jobs automáticos)
 
 ## 📈 Performance
 
@@ -757,6 +1001,9 @@ npm publish
 - **Code Splitting**: Lazy loading automático
 - **Cache Strategy**: React Query otimizado
 - **Bundle Size**: ~50kb gzipped por componente
+- **Auto-Update**: Cron job diário com impacto zero na performance
+- **Storage Resiliente**: Fallback local para alta disponibilidade
+- **Universal Timestamps**: Consistência global sem overhead
 
 ## 🤝 Contribuição SDK
 
@@ -770,6 +1017,17 @@ Para contribuir com o SDK:
 6. Submeta Pull Request
 
 ## 📝 Changelog
+
+### v2.1.0 - Sistema de Auto-Update Inteligente  
+- ✅ **Vercel Cron Integration** - Execução automática diária às 5h UTC
+- ✅ **Cache Resiliente** - Storage em Excel com backup dos últimos 7 arquivos
+- ✅ **Force Refresh API** - `/api/cache/report-134?force_refresh=true`
+- ✅ **Auto-Update API** - `/api/auto-update` com token de segurança
+- ✅ **useCachedReport134 Enhanced** - Cache inteligente com retry exponencial
+- ✅ **Universal Timestamps** - Baseados no sistema de arquivos para consistência
+- ✅ **Storage Automático** - Limpeza e fallback graceful
+- ✅ **Security Token** - CRON_SECRET para proteção de execução
+- ✅ **Monitoring & Logs** - Sistema completo de auditoria
 
 ### v2.0.0 - Sistema de Autenticação
 - ✅ **NextAuth.js v5** - Sistema completo de autenticação

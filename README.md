@@ -39,6 +39,8 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 - ✅ Visualização de acompanhamentos por status (CURSANDO/REPROVADO_EVADIDO)
 - ✅ Grids responsivos com filtros avançados
 - ✅ Sistema de cache inteligente para relatórios
+- ✅ **Auto-update automático** - Cron job diário (5h UTC) com force refresh
+- ✅ **Storage resiliente** - Backup dos últimos 7 arquivos Excel
 - ✅ Exportação de dados para Excel
 - ✅ Modais detalhados para cada curso
 - ✅ **Timestamps universais** - Exibição consistente em qualquer fuso horário
@@ -48,7 +50,11 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 - ✅ Widget compacto com estatísticas em tempo real
 - ✅ Dados da YouTube Data API v3 (inscritos, visualizações)
 - ✅ Layout retrátil/expansível
-- ✅ Cache inteligente (5min refresh)
+- ✅ **Cache agressivo otimizado** - 1-6 horas staleTime (anteriormente 5min)
+- ✅ **Sistema de preservação de quota** - Redução de ~400 para ~10 calls/dia
+- ✅ **Monitoramento de quota diária** - Indicador visual de uso da API
+- ✅ **Cache persistente** - localStorage para preservar dados entre sessões
+- ✅ **Estratégia de chamada única** - 1 call por sessão vs 4 calls anteriores
 - ✅ Link direto para o canal
 
 ### 🎨 **Interface**
@@ -59,6 +65,8 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 - ✅ Tipografia otimizada
 - ✅ Menu de usuário com informações de role
 - ✅ Navegação baseada em permissões
+- ✅ **Cards responsivos otimizados** - Texto centralizado e sem overflow
+- ✅ **Layout flexível** - Altura mínima e distribuição uniforme de conteúdo
 
 ## 🚀 Tecnologias
 
@@ -84,6 +92,8 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 - **Moodle Web Services** - Integração com LMS
 - **YouTube Data API v3** - Estatísticas do canal
 - **ExcelJS** - Exportação de planilhas
+- **Vercel Cron** - Sistema de auto-update automático
+- **Node.js File System** - Storage resiliente de dados
 
 ### **UI/UX**
 - **Lucide React** - Ícones modernos
@@ -126,6 +136,9 @@ NEXTAUTH_SECRET=sua_chave_secreta_super_forte_aqui
 # YouTube Data API
 NEXT_PUBLIC_YOUTUBE_API_KEY=sua_api_key_aqui
 NEXT_PUBLIC_YOUTUBE_CHANNEL_HANDLE=@cjudtjrs
+
+# Auto-Update System (Produção)
+CRON_SECRET=sua_chave_secreta_para_cron_jobs
 
 # Configuração do servidor
 PORT=3001
@@ -177,6 +190,103 @@ pnpm dev
 - **URLs autorizados**: Adicione seus domínios
 - **Restrições de API**: Apenas YouTube Data API v3
 
+## 🔄 Sistema de Auto-Update Inteligente
+
+O dashboard possui um **sistema de atualização automática** que mantém os dados sempre atualizados sem intervenção manual.
+
+### **🕒 Cron Job Automático**
+```json
+// vercel.json
+{
+  "crons": [
+    {
+      "path": "/api/auto-update", 
+      "schedule": "0 5 * * *"  // Diário às 5h UTC
+    }
+  ]
+}
+```
+- ✅ **Execução automática** todo dia às 5h UTC
+- ✅ **Não requer intervenção manual**
+- ✅ **Funciona em produção (Vercel/Netlify)**
+
+### **🔄 Endpoints de Auto-Update**
+
+#### **Trigger Simples**
+```bash
+GET /api/auto-update?token=seu_cron_secret
+```
+- Registra execução do cron job
+- Log de timestamp e informações do ambiente
+
+#### **Refresh Completo**
+```bash
+GET /api/auto-update?token=seu_cron_secret&refresh_data=true
+```
+- **Força busca de dados frescos** do Moodle
+- **Invalida cache existente**
+- **Atualiza storage** com novos dados
+
+### **📊 Cache System Resiliente**
+
+#### **GET `/api/cache/report-134?latest=1`**
+- Busca arquivo Excel mais recente
+- Converte para JSON automaticamente
+- Headers anti-cache para dados sempre frescos
+- Timestamps universais baseados no arquivo
+
+#### **POST `/api/cache/report-134?force_refresh=true`**
+- Força busca de dados do Moodle
+- Salva novo arquivo Excel com timestamp
+- Remove arquivos antigos (mantém últimos 7)
+- Timestamp universal para consistência global
+
+### **💾 Storage Inteligente**
+```
+storage/report134/
+├── report134_20250823_125726.xlsx    ← Dados mais recentes
+├── report134_20250823_130742.xlsx    ← Backup automático
+├── report134_20250823_131116.xlsx    ← Histórico
+└── temp_refresh_20250823_125455.txt  ← Indicador de refresh
+```
+
+**Funcionalidades:**
+- ✅ **Backup automático** dos últimos 7 arquivos
+- ✅ **Estrutura Excel** com sheets 'meta' e 'data'  
+- ✅ **Timestamps universais** no nome do arquivo
+- ✅ **Limpeza automática** de arquivos antigos
+- ✅ **Fallback resiliente** se API falhar
+
+### **⚡ Hook `useCachedReport134`**
+```typescript
+const { data, isLoading, error } = useCachedReport134()
+
+// Configurações automáticas:
+// ✅ Cache: 30 segundos
+// ✅ Garbage Collection: 5 minutos  
+// ✅ Retry: 2 tentativas com backoff exponencial
+// ✅ Error handling: Fallback graceful
+```
+
+### **🔒 Segurança Auto-Update**
+```env
+# .env.local
+CRON_SECRET=sua_chave_secreta_para_cron_jobs
+```
+- **Token de autorização** obrigatório
+- **Proteção contra execução não autorizada** 
+- **Logs de segurança** para auditoria
+
+### **🎯 Fluxo Completo**
+```
+1. Vercel Cron (5h UTC) → 
+2. /api/auto-update?refresh_data=true → 
+3. Busca dados frescos do Moodle →
+4. Salva arquivo Excel com timestamp →
+5. Cliente usa useCachedReport134() →
+6. Dashboard atualizado automaticamente
+```
+
 ## 📁 Estrutura do Projeto
 
 ```
@@ -184,7 +294,13 @@ moodle-dashboard/
 ├── src/
 │   ├── app/                    # App Router (Next.js 15)
 │   │   ├── api/               # API Routes
-│   │   │   └── auth/          # NextAuth.js routes
+│   │   │   ├── auth/          # NextAuth.js routes
+│   │   │   ├── auto-update/   # 🆕 Sistema de auto-update automático
+│   │   │   ├── cache/         # 🆕 APIs de cache resiliente  
+│   │   │   │   └── report-134/# Cache específico Report 134
+│   │   │   ├── acompanhamentos/# CRUD de acompanhamentos
+│   │   │   ├── users/         # Gerenciamento de usuários
+│   │   │   └── moodle/        # Proxy para Moodle Web Services
 │   │   ├── auth/              # Páginas de autenticação
 │   │   │   └── signin/        # Página de login
 │   │   ├── globals.css        # Estilos globais
@@ -302,7 +418,9 @@ npm run lint         # Verificar código
 - Grid de acompanhamentos com filtros
 - Modais detalhados por curso
 - Sistema de status educacional
-- Cache de relatórios para performance
+- **Cache de relatórios para performance** com auto-update
+- **Sistema resiliente** - Storage em arquivos Excel com backup
+- **Atualização automática** - Cron job diário sem intervenção manual
 - Exportação Excel automática
 
 ### **Widget YouTube**
