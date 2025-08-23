@@ -8,9 +8,13 @@ const ACOMPANHAMENTOS_KEY = 'acompanhamentos'
 export function useAcompanhamentos() {
   const { data: session } = useSession()
   
+  console.log('useAcompanhamentos - session:', session)
+  console.log('useAcompanhamentos - user:', session?.user)
+  
   return useQuery({
     queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id],
     queryFn: async () => {
+      console.log('useAcompanhamentos - fetching data for user:', session?.user?.id)
       const response = await fetch('/api/acompanhamentos')
       if (!response.ok) {
         throw new Error('Failed to fetch acompanhamentos')
@@ -19,7 +23,7 @@ export function useAcompanhamentos() {
       console.log('Fetched acompanhamentos for user:', session?.user?.id, data.acompanhamentos)
       return data.acompanhamentos as Acompanhamento[]
     },
-    enabled: !!session?.user,
+    enabled: !!session?.user?.id,
     staleTime: 1 * 60 * 1000, // 1 minute (reduzido para forçar mais atualizações)
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -116,6 +120,11 @@ export function useAcompanhamentosSync() {
   const createMutation = useCreateAcompanhamento()
   const updateMutation = useUpdateAcompanhamento()
   const deleteMutation = useDeleteAcompanhamento()
+
+  console.log('useAcompanhamentosSync - session:', session)
+  console.log('useAcompanhamentosSync - acompanhamentos:', acompanhamentos)
+  console.log('useAcompanhamentosSync - isLoading:', isLoading)
+  console.log('useAcompanhamentosSync - error:', error)
 
   return {
     acompanhamentos: acompanhamentos || [],

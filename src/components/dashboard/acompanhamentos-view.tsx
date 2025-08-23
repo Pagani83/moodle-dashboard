@@ -12,6 +12,8 @@ import type { Acompanhamento, CursoAcompanhamento } from '@/types/moodle';
 export default function AcompanhamentosView() {
   const { data: session } = useSession();
   
+  console.log('AcompanhamentosView - session:', session)
+  
   // Usar o novo hook de sincronização
   const {
     acompanhamentos: persistentAcompanhamentos,
@@ -23,6 +25,9 @@ export default function AcompanhamentosView() {
     isUpdating,
     isDeleting
   } = useAcompanhamentosSync();
+  
+  console.log('AcompanhamentosView - persistentAcompanhamentos:', persistentAcompanhamentos)
+  console.log('AcompanhamentosView - isLoadingPersistent:', isLoadingPersistent)
 
   // Zustand store para estado local/UI
   const { 
@@ -280,7 +285,14 @@ export default function AcompanhamentosView() {
       {/* Lista de acompanhamentos */}
       <div className="bg-white rounded-lg shadow p-6">
         <h4 className="text-md font-medium text-gray-900 mb-4">Salvos</h4>
-        {acompanhamentos.length === 0 ? (
+        {isLoadingPersistent ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-2 text-gray-500">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <span>Carregando acompanhamentos...</span>
+            </div>
+          </div>
+        ) : acompanhamentos.length === 0 ? (
           <p className="text-gray-600 text-sm">Nenhum acompanhamento criado ainda.</p>
         ) : (
           <div className="space-y-3">
