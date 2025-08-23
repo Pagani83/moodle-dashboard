@@ -5,12 +5,20 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: # Permite execução manual também
 
+# Permissões necessárias para o GitHub Actions
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   trigger-vercel-redeploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
