@@ -66,8 +66,13 @@ export function DashboardHomePage() {
       queryKey: ['report134-cache'],
       queryFn: async () => {
         try {
-          console.log('📊 Buscando dados do cache/storage...');
-          const response = await fetch('/api/cache/report-134?latest=1');
+          console.log('📊 Buscando dados frescos do cache/storage...');
+          const response = await fetch('/api/cache/report-134?latest=1&t=' + Date.now(), {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
           
           if (response.ok) {
             const data = await response.json();
@@ -110,8 +115,10 @@ export function DashboardHomePage() {
           };
         }
       },
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      gcTime: 30 * 60 * 1000, // 30 minutos (para manter fallback disponível)
+      staleTime: 0, // Sempre buscar dados frescos do servidor
+      gcTime: 5 * 60 * 1000, // 5 minutos para garbage collection
+      refetchOnMount: true, // Sempre refetch ao montar o componente
+      refetchOnWindowFocus: true, // Refetch quando usuário voltar à janela
       retry: (failureCount, error) => {
         // Tentar até 2 vezes em caso de erro de rede
         return failureCount < 2;

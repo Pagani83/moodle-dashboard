@@ -37,7 +37,13 @@ export async function GET(req: NextRequest) {
     const latest = url.searchParams.get('latest');
     const files = await listFiles();
     if (latest) {
-      if (!files.length) return NextResponse.json({ ok: true, hasFile: false, reason: 'no_files' });
+      if (!files.length) return NextResponse.json({ ok: true, hasFile: false, reason: 'no_files' }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache', 
+          'Expires': '0'
+        }
+      });
 
       const latestFile = files[0];
       // Ler XLSX e retornar JSON
@@ -66,7 +72,13 @@ export async function GET(req: NextRequest) {
           data.push(rowObj);
         }
       }
-      return NextResponse.json({ ok: true, hasFile: true, file: { name: latestFile.name, size: latestFile.size }, meta, data });
+      return NextResponse.json({ ok: true, hasFile: true, file: { name: latestFile.name, size: latestFile.size }, meta, data }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     }
     // Listagem simples
     return NextResponse.json({ ok: true, files: files.map(f => ({ name: f.name, mtimeMs: f.mtimeMs, size: f.size })) });
