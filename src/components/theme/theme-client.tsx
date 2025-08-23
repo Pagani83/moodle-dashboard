@@ -3,61 +3,56 @@
 import { useEffect } from 'react';
 import { useMoodleStore } from '@/store/moodle-store';
 
-// This client-only component syncs the Zustand theme to the <html> classList
 export function ThemeClient() {
   const { theme } = useMoodleStore();
 
   useEffect(() => {
-    // Force immediate update on mount and theme changes
-    const applyTheme = () => {
+    const applyTheme = (newTheme: 'light' | 'dark') => {
       const root = document.documentElement;
       const body = document.body;
       
-      // Remove both classes first to ensure clean state
+      console.log('🎨 Forçando tema:', newTheme);
+      
+      // Remove classes existentes
       root.classList.remove('dark', 'light');
       body.classList.remove('dark', 'light');
       
-      // Add the correct class
-      if (theme === 'dark') {
-        root.classList.add('dark');
-        body.classList.add('dark');
+      // Adiciona nova classe
+      root.classList.add(newTheme);
+      body.classList.add(newTheme);
+      
+      // Define color-scheme
+      root.style.colorScheme = newTheme;
+      
+      // FORÇA as cores via CSS custom properties
+      if (newTheme === 'dark') {
+        root.style.setProperty('--background', '#0f172a');
+        root.style.setProperty('--foreground', '#f8fafc');
+        root.style.setProperty('--card', '#1e293b');
+        root.style.setProperty('--border', '#374151');
       } else {
-        root.classList.add('light');
-        body.classList.add('light');
+        root.style.setProperty('--background', '#ffffff');
+        root.style.setProperty('--foreground', '#1e293b');
+        root.style.setProperty('--card', '#ffffff');
+        root.style.setProperty('--border', '#e2e8f0');
       }
       
-      // Force style recalculation
-      root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+      // FORÇA o background do body diretamente
+      body.style.backgroundColor = newTheme === 'dark' ? '#0f172a' : '#ffffff';
+      body.style.color = newTheme === 'dark' ? '#f8fafc' : '#1e293b';
       
-      // Force a reflow to ensure classes are applied
-      root.offsetHeight;
+      // Salva no localStorage
+      try {
+        localStorage.setItem('theme', newTheme);
+      } catch (e) {
+        console.warn('Não foi possível salvar tema no localStorage');
+      }
       
-      // Debug logging
-      console.log('🎨 Theme applied:', theme, {
-        rootClasses: Array.from(root.classList),
-        bodyClasses: Array.from(body.classList),
-        colorScheme: root.style.colorScheme
-      });
+      console.log('✅ Tema FORÇADO:', newTheme, 'Classes:', Array.from(root.classList));
     };
 
-    // Apply immediately
-    applyTheme();
-    
-    // Also apply after a small delay to handle any hydration issues
-    const timer = setTimeout(applyTheme, 100);
-    
-    return () => clearTimeout(timer);
+    applyTheme(theme);
   }, [theme]);
-
-  // Also apply on mount to handle SSR
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  }, []);
 
   return null;
 }

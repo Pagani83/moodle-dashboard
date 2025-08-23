@@ -151,6 +151,9 @@ export interface Acompanhamento {
   mostrar_card_resumo: boolean;
   criado_em: string;
   atualizado_em: string;
+  userId?: string; // ID do usuário proprietário
+  createdAt?: string; // Para compatibilidade com API
+  updatedAt?: string; // Para compatibilidade com API
 }
 
 // ============================================================================

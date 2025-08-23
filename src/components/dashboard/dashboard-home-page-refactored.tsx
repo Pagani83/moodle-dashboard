@@ -154,142 +154,109 @@ export function DashboardHomePage() {
   }
 
   return (
-    <div className="min-h-screen transition-colors" style={{ background: 'var(--background)' }}>
-      {/* Header que alterna entre temas com bom contraste */}
-      <header 
-        className="shadow-lg"
-        style={{ 
-          backgroundColor: theme === 'light' ? '#ffffff' : '#0f172a',
-          color: theme === 'light' ? '#1e293b' : '#f8fafc',
-          borderBottom: theme === 'light' ? '1px solid #e2e8f0' : '1px solid #374151'
-        }}
-      >
-        <div className="flex items-center justify-between px-6 py-6">
-          <div className="flex flex-col space-y-1">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Dashboard Moodle CJUD
-            </h1>
-            <p 
-              className="text-sm"
-              style={{ color: theme === 'light' ? '#64748b' : '#94a3b8' }}
-            >
-              Sistema de acompanhamento e relatórios
-            </p>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+      {/* Header fixo */}
+      <header className="sticky top-0 z-40 border-b" style={{ 
+        backgroundColor: 'var(--background)',
+        borderColor: 'var(--border)',
+      }}>
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center space-x-4">
+            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Moodle Dashboard
+            </div>
+            <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              v2.0 | NextAuth
+            </div>
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Status de conexão */}
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1">
-                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                <span 
-                  className="text-xs"
-                  style={{ color: theme === 'light' ? '#22c55e' : '#4ade80' }}
-                >
-                  Conectado ao Moodle
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  console.log('🔄 Alternando tema de', theme, 'para', theme === 'dark' ? 'light' : 'dark');
-                  setTheme(theme === 'dark' ? 'light' : 'dark');
-                }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
-                style={{ 
-                  backgroundColor: theme === 'light' ? '#f1f5f9' : '#334155',
-                  color: theme === 'light' ? '#475569' : '#cbd5e1',
-                  border: `1px solid ${theme === 'light' ? '#e2e8f0' : '#475569'}`
-                }}
-                title={`Alternar para modo ${theme === 'dark' ? 'claro' : 'escuro'}`}
-              >
-                <span className="text-sm">
-                  {theme === 'dark' ? '🌞' : '🌙'}
-                </span>
-                <span>
-                  {theme === 'dark' ? 'Claro' : 'Escuro'}
-                </span>
-              </button>
-            </div>
-            
-            {/* Menu do usuário */}
+            {/* Menu do usuário - novo componente de autenticação */}
             <UserMenu />
+            
+            {/* Toggle de tema */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-lg border bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              {theme === 'dark' ? '🌞' : '🌙'}
+            </button>
           </div>
         </div>
 
-        {/* Navegação por abas - estilo original */}
-        <nav 
-          className="flex space-x-0 px-6"
-          style={{ 
-            backgroundColor: theme === 'light' ? '#f8fafc' : '#1e293b',
-            borderBottom: theme === 'light' ? '1px solid #e2e8f0' : '1px solid #374151'
-          }}
-        >
+        {/* Navegação por tabs */}
+        <nav className="flex space-x-0 px-6 border-t" style={{ borderColor: 'var(--border)' }}>
           <button
             onClick={() => setActiveTab('dashboard')}
-            className="px-4 py-3 text-sm font-medium transition-colors"
-            style={{ 
-              backgroundColor: activeTab === 'dashboard' ? '#2563eb' : 'transparent',
-              color: activeTab === 'dashboard' 
-                ? '#ffffff' 
-                : (theme === 'light' ? '#475569' : '#cbd5e1')
-            }}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'dashboard' 
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
           >
-            Dashboard
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Dashboard</span>
+            </div>
           </button>
 
           <button
             onClick={() => setActiveTab('acompanhamentos')}
-            className="px-4 py-3 text-sm font-medium transition-colors"
-            style={{ 
-              backgroundColor: activeTab === 'acompanhamentos' ? '#2563eb' : 'transparent',
-              color: activeTab === 'acompanhamentos' 
-                ? '#ffffff' 
-                : (theme === 'light' ? '#475569' : '#cbd5e1')
-            }}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'acompanhamentos' 
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
           >
-            Acompanhamentos
+            <div className="flex items-center space-x-2">
+              <BookOpen className="h-4 w-4" />
+              <span>Acompanhamentos</span>
+            </div>
           </button>
 
           <button
             onClick={() => setActiveTab('report134')}
-            className="px-4 py-3 text-sm font-medium transition-colors"
-            style={{ 
-              backgroundColor: activeTab === 'report134' ? '#2563eb' : 'transparent',
-              color: activeTab === 'report134' 
-                ? '#ffffff' 
-                : (theme === 'light' ? '#475569' : '#cbd5e1')
-            }}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'report134' 
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
           >
-            Relatório 134
+            <div className="flex items-center space-x-2">
+              <FileText className="h-4 w-4" />
+              <span>Report 134</span>
+            </div>
           </button>
 
           {/* Tab de usuários só para admin */}
           {session?.user?.role === 'ADMIN' && (
             <button
               onClick={() => setActiveTab('usuarios')}
-              className="px-4 py-3 text-sm font-medium transition-colors"
-              style={{ 
-                backgroundColor: activeTab === 'usuarios' ? '#2563eb' : 'transparent',
-                color: activeTab === 'usuarios' 
-                  ? '#ffffff' 
-                  : (theme === 'light' ? '#475569' : '#cbd5e1')
-              }}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'usuarios' 
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
             >
-              Usuários
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>Usuários</span>
+              </div>
             </button>
           )}
 
           <button
             onClick={() => setActiveTab('config')}
-            className="px-4 py-3 text-sm font-medium transition-colors"
-            style={{ 
-              backgroundColor: activeTab === 'config' ? '#2563eb' : 'transparent',
-              color: activeTab === 'config' 
-                ? '#ffffff' 
-                : (theme === 'light' ? '#475569' : '#cbd5e1')
-            }}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'config' 
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
           >
-            Configurações
+            <div className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>Config</span>
+            </div>
           </button>
         </nav>
       </header>

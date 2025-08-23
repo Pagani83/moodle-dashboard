@@ -1,17 +1,56 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { AlertCircle, Trash2, Plus, Filter, Edit3 } from 'lucide-react';
 import { useMoodleStore } from '@/store/moodle-store';
 import { useReport134Full } from '@/hooks/use-report-134';
 import { useSafeMoodleClient } from '@/providers/moodle-provider';
+import { useAcompanhamentosSync } from '@/hooks/use-acompanhamentos';
+import { useSession } from 'next-auth/react';
 import type { Acompanhamento, CursoAcompanhamento } from '@/types/moodle';
 
 export default function AcompanhamentosView() {
-  const { acompanhamentos, addAcompanhamento, removeAcompanhamento, setAcompanhamentoAtivo, acompanhamentoAtivo, updateAcompanhamento } = useMoodleStore();
+  const { data: session } = useSession();
+  
+  // Usar o novo hook de sincronização
+  const {
+    acompanhamentos: persistentAcompanhamentos,
+    isLoading: isLoadingPersistent,
+    createAcompanhamento,
+    updateAcompanhamento,
+    deleteAcompanhamento,
+    isCreating,
+    isUpdating,
+    isDeleting
+  } = useAcompanhamentosSync();
+
+  // Zustand store para estado local/UI
+  const { 
+    acompanhamentos: localAcompanhamentos, 
+    setAcompanhamentoAtivo, 
+    acompanhamentoAtivo,
+    addAcompanhamento: addLocalAcompanhamento,
+    updateAcompanhamento: updateLocalAcompanhamento,
+    removeAcompanhamento: removeLocalAcompanhamento
+  } = useMoodleStore();
+  
   const client = useSafeMoodleClient();
-  // Observa SOMENTE o cache do 134 (enabled: false evita fetch aqui)
   const report134 = useReport134Full(client!, false);
+
+  // Sincronizar dados persistentes com store local
+  useEffect(() => {
+    if (persistentAcompanhamentos.length > 0) {
+      // Atualizar store local com dados da API
+      persistentAcompanhamentos.forEach(acomp => {
+        if (!localAcompanhamentos.find(local => local.id === acomp.id)) {
+          addLocalAcompanhamento(acomp);
+        }
+      });
+    }
+  }, [persistentAcompanhamentos, localAcompanhamentos, addLocalAcompanhamento]);
+
+  // Usar dados persistentes como fonte principal
+  const acompanhamentos = persistentAcompanhamentos.length > 0 ? persistentAcompanhamentos : localAcompanhamentos;
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -67,7 +106,7 @@ export default function AcompanhamentosView() {
     setShowForm(true);
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const selected: CursoAcompanhamento[] = selectedCourseIds.map((id) => {
       const c = allCourses.find((x: any) => x.id === id);
@@ -86,14 +125,39 @@ export default function AcompanhamentosView() {
       descricao,
       cursos: selected,
       mostrar_card_resumo: true,
-    } as const;
+      criado_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString()
+    };
 
-    if (editingId) {
-      updateAcompanhamento(editingId, base as any);
-    } else {
-      addAcompanhamento(base as any);
+    try {
+      if (editingId) {
+        await updateAcompanhamento({ id: editingId, ...base });
+      } else {
+        await createAcompanhamento(base);
+      }
+      resetForm();
+    } catch (error) {
+      console.error('Erro ao salvar acompanhamento:', error);
+      alert('Erro ao salvar acompanhamento. Tente novamente.');
     }
-    resetForm();
+  }
+
+  // Função para remover acompanhamento
+  const handleRemoveAcompanhamento = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este acompanhamento?')) return;
+    
+    try {
+      await deleteAcompanhamento(id);
+      // Também remover do store local
+      removeLocalAcompanhamento(id);
+      // Se era o ativo, limpar seleção
+      if (acompanhamentoAtivo === id) {
+        setAcompanhamentoAtivo(null);
+      }
+    } catch (error) {
+      console.error('Erro ao excluir acompanhamento:', error);
+      alert('Erro ao excluir acompanhamento. Tente novamente.');
+    }
   }
 
   // Filtrar dados do 134 por acompanhamento
@@ -229,7 +293,7 @@ export default function AcompanhamentosView() {
                 <div className="flex items-center gap-2">
                   <button onClick={() => { setAcompanhamentoAtivo(a.id); }} className="px-2 py-1 text-xs rounded border bg-white">Ativar</button>
                   <button onClick={() => startEdit(a)} className="px-2 py-1 text-xs rounded border bg-white inline-flex items-center"><Edit3 className="h-3 w-3 mr-1"/>Editar</button>
-                  <button onClick={() => removeAcompanhamento(a.id)} className="px-2 py-1 text-xs rounded border bg-white inline-flex items-center text-red-600"><Trash2 className="h-3 w-3 mr-1"/>Excluir</button>
+                  <button onClick={() => handleRemoveAcompanhamento(a.id)} className="px-2 py-1 text-xs rounded border bg-white inline-flex items-center text-red-600"><Trash2 className="h-3 w-3 mr-1"/>Excluir</button>
                 </div>
               </div>
             ))}
