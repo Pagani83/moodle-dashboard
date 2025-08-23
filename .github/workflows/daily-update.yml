@@ -25,11 +25,27 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Update timestamp
+      - name: Trigger data refresh and update
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          # Primeiro, chama a API para atualizar dados frescos do Moodle
+          if [ -n "$CRON_SECRET" ]; then
+            echo "🔄 Refreshing Moodle data via API..."
+            # Usar a URL do próprio deployment para chamar a API
+            VERCEL_URL="https://moodle-dashboard-coral.vercel.app"
+            curl -f "${VERCEL_URL}/api/auto-update?token=${CRON_SECRET}&refresh_data=true" || echo "⚠️  API call failed, continuing with git update..."
+            sleep 5
+          else
+            echo "⚠️  CRON_SECRET not set, skipping API data refresh"
+          fi
+          
+          # Depois, cria commit para forçar rebuild no Vercel
+          echo "📝 Creating commit for Vercel rebuild..."
           echo "Last updated: $(date)" > .vercel-update
+          echo "Data refresh triggered: $(date)" >> .vercel-update
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .vercel-update
-          git commit -m "chore: daily auto-update $(date +'%Y-%m-%d %H:%M')" || exit 0
+          git commit -m "chore: daily auto-update + data refresh $(date +'%Y-%m-%d %H:%M')" || exit 0
           git push
