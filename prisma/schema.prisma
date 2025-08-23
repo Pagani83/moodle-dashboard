@@ -24,6 +24,9 @@ model User {
   // NextAuth fields
   accounts      Account[]
   sessions      Session[]
+  
+  // Acompanhamentos relationship
+  acompanhamentos Acompanhamento[]
 
   @@map("users")
 }
@@ -70,4 +73,45 @@ model VerificationToken {
 enum UserRole {
   ADMIN
   USER
+}
+
+model Acompanhamento {
+  id                  String   @id @default(cuid())
+  nome                String
+  descricao           String
+  mostrar_card_resumo Boolean  @default(true)
+  userId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  user   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cursos AcompanhamentoCurso[]
+  
+  @@map("acompanhamentos")
+}
+
+model AcompanhamentoCurso {
+  id               String   @id @default(cuid())
+  acompanhamentoId String
+  courseId         String
+  courseName       String
+  shortName        String?
+  fullName         String
+  ativo            Boolean  @default(true)
+  status           AcompanhamentoStatus @default(CURSANDO)
+  progress         Float    @default(0)
+  grade            Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  acompanhamento Acompanhamento @relation(fields: [acompanhamentoId], references: [id], onDelete: Cascade)
+  
+  @@unique([acompanhamentoId, courseId])
+  @@map("acompanhamento_cursos")
+}
+
+enum AcompanhamentoStatus {
+  CURSANDO
+  REPROVADO_EVADIDO
+  CONCLUIDO
 }

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 export const useCachedReport134 = () => {
-  return useQuery({
+  const result = useQuery({
     queryKey: ['report134-cache'],
     queryFn: async () => {
       try {
@@ -66,4 +66,6 @@ export const useCachedReport134 = () => {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Backoff exponencial mais rápido
   });
+  
+  return result;
 };

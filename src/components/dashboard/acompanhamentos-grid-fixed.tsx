@@ -218,29 +218,29 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
                 )}
 
                 {/* Estatísticas com Cards Individuais */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center min-h-[80px]">
+                    <div className="text-lg font-bold text-blue-700 dark:text-blue-300 mb-1">
                       {stats.totalInscricoes}
                     </div>
-                    <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                      Alunos
+                    <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide text-center leading-tight">
+                      ALUNOS
                     </div>
                   </div>
-                  <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                    <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                  <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 flex flex-col items-center justify-center min-h-[80px]">
+                    <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1">
                       {stats.totalConclusoes}
                     </div>
-                    <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                      Concluídos
+                    <div className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide text-center leading-tight">
+                      CONCLUÍDOS
                     </div>
                   </div>
-                  <div className="text-center p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-800">
-                    <div className="text-2xl font-bold text-violet-700 dark:text-violet-300">
+                  <div className="text-center p-3 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-800 flex flex-col items-center justify-center min-h-[80px]">
+                    <div className="text-lg font-bold text-violet-700 dark:text-violet-300 mb-1">
                       {stats.totalInscricoes > 0 ? Math.round((stats.totalConclusoes / stats.totalInscricoes) * 100) : 0}%
                     </div>
-                    <div className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wider">
-                      Conclusões
+                    <div className="text-[10px] font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide text-center leading-tight">
+                      CONCLUSÕES
                     </div>
                   </div>
                 </div>

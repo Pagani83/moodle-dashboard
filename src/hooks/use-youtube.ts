@@ -1,10 +1,61 @@
 /**
  * Hook para integração com YouTube Data API
  * Permite buscar dados do canal, crescimento, vídeos, etc.
+ * 
+ * OTIMIZADO PARA POUPAR API QUOTA:
+ * - Cache agressivo de 1-6 horas
+ * - Sem refetch automático
+ * - Apenas 1 tentativa por call
+ * - Cache persistente no localStorage
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { YouTubeClient, type ChannelInfo, type VideoStatistics, type AnalyticsData } from '@/lib/youtube-client';
+import { youtubeQuotaMonitor } from '@/lib/youtube-quota-monitor';
+
+// Cache persistente no localStorage para poupar API calls
+const YOUTUBE_CACHE_KEY = 'youtube-data-cache';
+const YOUTUBE_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 horas de cache no localStorage
+
+// Função para ler cache persistente
+function getCachedData(key: string) {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const cached = localStorage.getItem(`${YOUTUBE_CACHE_KEY}-${key}`);
+    if (!cached) return null;
+    
+    const { data, timestamp } = JSON.parse(cached);
+    const isExpired = Date.now() - timestamp > YOUTUBE_CACHE_DURATION;
+    
+    if (isExpired) {
+      localStorage.removeItem(`${YOUTUBE_CACHE_KEY}-${key}`);
+      return null;
+    }
+    
+    console.log(`📦 YouTube: Usando dados em cache para ${key}`);
+    return data;
+  } catch (error) {
+    console.warn('Erro ao ler cache do YouTube:', error);
+    return null;
+  }
+}
+
+// Função para salvar cache persistente
+function setCachedData(key: string, data: any) {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const cacheEntry = {
+      data,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(`${YOUTUBE_CACHE_KEY}-${key}`, JSON.stringify(cacheEntry));
+    console.log(`💾 YouTube: Dados salvos em cache para ${key}`);
+  } catch (error) {
+    console.warn('Erro ao salvar cache do YouTube:', error);
+  }
+}
 
 // Configuração padrão - usa variáveis de ambiente
 const DEFAULT_CONFIG = {
@@ -21,21 +72,51 @@ export function useYouTubeChannel(
   config: typeof DEFAULT_CONFIG = DEFAULT_CONFIG,
   enabled: boolean = true
 ) {
+  const cacheKey = `channel-${config.channelHandle || config.channelId}`;
+  
   return useQuery({
     queryKey: ['youtube', 'channel', config.channelHandle || config.channelId],
     queryFn: async (): Promise<ChannelInfo> => {
+      // Primeiro, verificar quota
+      if (youtubeQuotaMonitor.shouldBlockCalls()) {
+        throw new Error('YouTube API quota diária esgotada. Tente novamente amanhã.');
+      }
+      
+      if (!youtubeQuotaMonitor.hasQuotaAvailable('channel')) {
+        throw new Error('YouTube API quota seria excedida com esta chamada.');
+      }
+      
+      // Segundo, tentar usar cache persistente
+      const cachedData = getCachedData(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+      
       if (!config.apiKey) {
         throw new Error('YouTube API Key não configurada. Defina NEXT_PUBLIC_YOUTUBE_API_KEY no .env.local');
       }
       
+      console.log('📞 YouTube API: Buscando dados frescos do canal...');
+      
+      // Registrar o uso da API ANTES da chamada
+      youtubeQuotaMonitor.recordApiCall('channel');
+      
       const client = new YouTubeClient(config);
-      return await client.getChannelInfo();
+      const data = await client.getChannelInfo();
+      
+      // Salvar no cache persistente
+      setCachedData(cacheKey, data);
+      
+      return data;
     },
-    enabled: enabled && !!config.apiKey,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos (substitui cacheTime)
-    retry: 1, // Reduzir para 1 tentativa apenas
-    retryDelay: 5000, // 5 segundos de delay
+    enabled: enabled && !!config.apiKey && !youtubeQuotaMonitor.shouldBlockCalls(),
+    staleTime: 60 * 60 * 1000, // 1 HORA - Cache muito mais longo para poupar API calls
+    gcTime: 24 * 60 * 60 * 1000, // 24 HORAS - Manter em memória por muito mais tempo
+    retry: 1, // Apenas 1 tentativa para evitar esgotar quota
+    retryDelay: 30000, // 30 segundos de delay entre tentativas
+    refetchOnWindowFocus: false, // NUNCA refetch ao focar na janela
+    refetchOnMount: false, // NUNCA refetch ao montar o componente se já tem dados
+    refetchOnReconnect: false, // NUNCA refetch ao reconectar
   });
 }
 
@@ -46,7 +127,7 @@ export function useYouTubeChannel(
 export function useYouTubeRecentVideos(
   maxResults: number = 10,
   config: typeof DEFAULT_CONFIG = DEFAULT_CONFIG,
-  enabled: boolean = true
+  enabled: boolean = false // DESABILITADO POR PADRÃO para poupar quota
 ) {
   return useQuery({
     queryKey: ['youtube', 'recentVideos', maxResults, config.channelHandle || config.channelId],
@@ -59,10 +140,13 @@ export function useYouTubeRecentVideos(
       return await client.getRecentVideos(maxResults);
     },
     enabled: enabled && !!config.apiKey,
-    staleTime: 10 * 60 * 1000, // 10 minutos
-    gcTime: 30 * 60 * 1000, // 30 minutos
-    retry: 1, // Reduzir para 1 tentativa apenas
-    retryDelay: 5000, // 5 segundos de delay
+    staleTime: 2 * 60 * 60 * 1000, // 2 HORAS - Vídeos recentes não mudam muito
+    gcTime: 12 * 60 * 60 * 1000, // 12 HORAS
+    retry: 1, // Apenas 1 tentativa para evitar esgotar quota
+    retryDelay: 30000, // 30 segundos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -73,7 +157,7 @@ export function useYouTubeRecentVideos(
 export function useYouTubeGrowth(
   days: number = 30,
   config: typeof DEFAULT_CONFIG = DEFAULT_CONFIG,
-  enabled: boolean = true
+  enabled: boolean = false // DESABILITADO POR PADRÃO para poupar quota
 ) {
   return useQuery({
     queryKey: ['youtube', 'growth', days, config.channelHandle || config.channelId],
@@ -86,10 +170,13 @@ export function useYouTubeGrowth(
       return await client.getSubscriberGrowth(days);
     },
     enabled: enabled && !!config.apiKey,
-    staleTime: 60 * 60 * 1000, // 1 hora
-    gcTime: 2 * 60 * 60 * 1000, // 2 horas
-    retry: 1, // Reduzir para 1 tentativa apenas
-    retryDelay: 5000, // 5 segundos de delay
+    staleTime: 4 * 60 * 60 * 1000, // 4 HORAS - Analytics mudam ainda menos
+    gcTime: 24 * 60 * 60 * 1000, // 24 HORAS
+    retry: 1, // Apenas 1 tentativa para evitar esgotar quota
+    retryDelay: 30000, // 30 segundos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -100,7 +187,7 @@ export function useYouTubeGrowth(
 export function useYouTubeTrending(
   maxResults: number = 5,
   config: typeof DEFAULT_CONFIG = DEFAULT_CONFIG,
-  enabled: boolean = true
+  enabled: boolean = false // DESABILITADO POR PADRÃO para poupar quota
 ) {
   return useQuery({
     queryKey: ['youtube', 'trending', maxResults, config.channelHandle || config.channelId],
@@ -113,25 +200,33 @@ export function useYouTubeTrending(
       return await client.getTrendingVideos(maxResults);
     },
     enabled: enabled && !!config.apiKey,
-    staleTime: 30 * 60 * 1000, // 30 minutos
-    gcTime: 60 * 60 * 1000, // 1 hora
-    retry: 1, // Reduzir para 1 tentativa apenas
-    retryDelay: 5000, // 5 segundos de delay
+    staleTime: 6 * 60 * 60 * 1000, // 6 HORAS - Trending videos são mais estáveis
+    gcTime: 24 * 60 * 60 * 1000, // 24 HORAS
+    retry: 1, // Apenas 1 tentativa para evitar esgotar quota
+    retryDelay: 30000, // 30 segundos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }
 
 // ============================================================================
 // HOOK CONSOLIDADO - DASHBOARD COMPLETO
+// ⚠️  CUIDADO: Este hook faz 4 calls simultâneas à YouTube API!
+// ⚠️  Use apenas quando precisar de todos os dados.
+// ⚠️  Para widget simples, use apenas useYouTubeChannel()
 // ============================================================================
 
 export function useYouTubeDashboard(
   config: typeof DEFAULT_CONFIG = DEFAULT_CONFIG,
   enabled: boolean = true
 ) {
+  console.warn('🚨 useYouTubeDashboard: Este hook faz 4 calls simultâneas! Use com parcimônia.');
+  
   const channelQuery = useYouTubeChannel(config, enabled);
-  const recentVideosQuery = useYouTubeRecentVideos(8, config, enabled);
-  const growthQuery = useYouTubeGrowth(30, config, enabled);
-  const trendingQuery = useYouTubeTrending(3, config, enabled);
+  const recentVideosQuery = useYouTubeRecentVideos(8, config, enabled && false); // DESABILITADO
+  const growthQuery = useYouTubeGrowth(30, config, enabled && false); // DESABILITADO  
+  const trendingQuery = useYouTubeTrending(3, config, enabled && false); // DESABILITADO
 
   return {
     // Dados

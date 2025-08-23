@@ -46,6 +46,7 @@ interface MoodleStore {
   addAcompanhamento: (acompanhamento: Omit<Acompanhamento, 'id' | 'criado_em' | 'atualizado_em'>) => void;
   updateAcompanhamento: (id: string, updates: Partial<Acompanhamento>) => void;
   removeAcompanhamento: (id: string) => void;
+  clearAllAcompanhamentos: () => void;
   setAcompanhamentoAtivo: (id: string | null) => void;
   
   // Actions - UI
@@ -150,6 +151,10 @@ export const useMoodleStore = create<MoodleStore>()(
           acompanhamentos: state.acompanhamentos.filter((acomp) => acomp.id !== id),
           acompanhamentoAtivo: state.acompanhamentoAtivo === id ? null : state.acompanhamentoAtivo,
         }));
+      },
+
+      clearAllAcompanhamentos: () => {
+        set({ acompanhamentos: [], acompanhamentoAtivo: null });
       },
 
       setAcompanhamentoAtivo: (id) => {

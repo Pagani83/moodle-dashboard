@@ -25,7 +25,7 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 
 ## ✨ Funcionalidades
 
-### � **Sistema de Autenticação**
+### 🔐 **Sistema de Autenticação**
 - ✅ Login seguro com NextAuth.js v5
 - ✅ Criptografia de senhas com bcrypt
 - ✅ Controle de acesso baseado em roles (ADMIN/USER)
@@ -33,6 +33,9 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 - ✅ Middleware de proteção de rotas
 - ✅ Interface de gerenciamento de usuários (Admin)
 - ✅ Sistema de logout com limpeza de sessão
+- ✅ **Integração completa com Prisma ORM**
+- ✅ **Persistência de usuários em banco de dados**
+- ✅ **Tracking de lastLogin automático**
 
 ### �📚 **Gestão Moodle**
 - ✅ Dashboard principal com estatísticas de cursos
@@ -87,6 +90,11 @@ O dashboard foi **completamente refatorado** de um arquivo monolítico para uma 
 - **TanStack Query v5** - Cache e sincronização de dados
 - **React Hook Form** - Formulários performáticos
 
+### **Banco de Dados**
+- **Prisma ORM** - ORM moderno com type-safety
+- **SQLite** - Banco de dados em desenvolvimento
+- **PostgreSQL/MySQL** - Bancos suportados em produção
+
 ### **Dados e APIs**
 - **Axios** - Cliente HTTP
 - **Moodle Web Services** - Integração com LMS
@@ -129,6 +137,9 @@ cp .env.example .env.local
 
 Edite `.env.local`:
 ```env
+# Banco de Dados (Prisma)
+DATABASE_URL="file:./dev.db"
+
 # NextAuth.js (Autenticação)
 NEXTAUTH_URL=http://localhost:3001
 NEXTAUTH_SECRET=sua_chave_secreta_super_forte_aqui
@@ -153,7 +164,22 @@ MOODLE_TOKEN=seu_token_aqui
 > openssl rand -base64 32
 > ```
 
-### **4. Credenciais de Teste**
+### **4. Configure o Banco de Dados**
+```bash
+# Instalar Prisma CLI
+npm install -g prisma
+
+# Executar migrations
+npx prisma migrate dev
+
+# Gerar cliente Prisma
+npx prisma generate
+
+# (Opcional) Visualizar dados no Prisma Studio
+npx prisma studio
+```
+
+### **5. Credenciais de Teste**
 Para acessar o sistema após a instalação:
 ```
 Email: admin@moodle.local
@@ -161,7 +187,9 @@ Senha: admin123
 Role: ADMIN (acesso completo)
 ```
 
-### **5. Execute o Projeto**
+> **⚠️ Importante**: O usuário admin é criado automaticamente na primeira execução se não existir
+
+### **6. Execute o Projeto**
 ```bash
 npm run dev
 # ou
@@ -338,7 +366,8 @@ moodle-dashboard/
 │   │   ├── use-youtube.ts    # Hooks do YouTube
 │   │   └── use-report-134.ts # Hook de relatórios
 │   ├── lib/                   # Utilitários
-│   │   ├── auth.ts           # Configuração NextAuth.js
+│   │   ├── auth.ts           # 🆕 Configuração NextAuth.js com Prisma
+│   │   ├── prisma.ts         # 🆕 Cliente Prisma singleton
 │   │   ├── moodle-client.ts  # Cliente Moodle
 │   │   ├── youtube-client.ts # Cliente YouTube
 │   │   └── query-client.ts   # Config React Query
@@ -349,6 +378,10 @@ moodle-dashboard/
 │   └── types/                 # Definições TypeScript
 │       └── next-auth.d.ts    # Tipos NextAuth.js
 ├── middleware.ts              # Middleware de proteção de rotas
+├── prisma/                    # 🆕 Esquema e migrações do banco
+│   ├── schema.prisma         # Definição do modelo de dados
+│   ├── migrations/           # Migrações do banco
+│   └── dev.db               # Banco SQLite local
 ├── public/                    # Assets estáticos
 ├── storage/                   # Arquivos de cache
 └── backup/                    # Backups e configs
@@ -372,6 +405,9 @@ O dashboard foi **refatorado de 1599 → 278 linhas** no componente principal, d
 - **Controle de Acesso**: Roles ADMIN e USER
 - **Proteção de Rotas**: Middleware automático
 - **Gerenciamento de Usuários**: Interface administrativa completa
+- **Integração Prisma**: Persistência completa em banco de dados
+- **Tracking de Sessão**: lastLogin automático
+- **CRUD Completo**: Create, Read, Update, Delete de usuários
 
 ### **Roles e Permissões**
 | Role | Dashboard | Relatórios | YouTube | Usuários | Config |
@@ -393,6 +429,12 @@ Role: ADMIN
 ```bash
 # Desenvolvimento
 npm run dev          # Servidor de desenvolvimento (porta 3001)
+
+# Banco de Dados (Prisma)
+npx prisma generate  # Gerar cliente Prisma
+npx prisma migrate dev # Executar migrações
+npx prisma studio    # Interface visual do banco
+npx prisma db push   # Aplicar schema sem migrações
 
 # Produção
 npm run build        # Build para produção

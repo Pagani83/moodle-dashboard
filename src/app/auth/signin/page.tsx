@@ -134,14 +134,6 @@ export default function SignIn() {
               )}
             </button>
           </div>
-
-          <div className="text-center">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 text-sm text-gray-600 dark:text-gray-400">
-              <p className="font-medium mb-2">Credenciais padrão:</p>
-              <p>Email: <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">admin@moodle.local</code></p>
-              <p>Senha: <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">admin123</code></p>
-            </div>
-          </div>
         </form>
       </div>
     </div>

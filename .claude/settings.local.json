@@ -17,7 +17,15 @@
       "Bash(mkdir:*)",
       "Bash(npm run dev)",
       "Bash(grep -r \"makeRequest.*configurable\" src/)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(node:*)",
+      "Bash(del seed-admin.js)",
+      "Bash(PORT=3001 npm run dev)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

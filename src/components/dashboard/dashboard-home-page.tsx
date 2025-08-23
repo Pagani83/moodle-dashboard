@@ -49,6 +49,8 @@ import AcompanhamentosView from './acompanhamentos-view';
 import { AcompanhamentosGrid } from './acompanhamentos-grid';
 import { AcompanhamentoDetailModal } from './acompanhamento-detail-modal';
 import { YouTubeWidget } from '../youtube/youtube-widget';
+import { useAcompanhamentosSync } from '@/hooks/use-acompanhamentos';
+import { clearLocalAcompanhamentos } from '@/utils/clear-local-acompanhamentos';
 import type { Acompanhamento } from '@/types/moodle';
 
 // Componentes extraídos
@@ -68,8 +70,16 @@ export function DashboardHomePage() {
   const { isConfigured, needsConfiguration } = useMoodleStatus();
   const { data: session } = useSession();
   
-  const { theme, setTheme, removeAcompanhamento, addAcompanhamento, updateAcompanhamento } = useMoodleStore();
+  const { theme, setTheme } = useMoodleStore();
   const client = useSafeMoodleClient();
+  
+  // Limpar acompanhamentos locais obsoletos
+  React.useEffect(() => {
+    clearLocalAcompanhamentos();
+  }, []);
+  
+  // Use API sync hook for persistent storage
+  const { createAcompanhamento, updateAcompanhamento, deleteAcompanhamento } = useAcompanhamentosSync();
   
   // Estado do modal de detalhamento
   const [modalOpen, setModalOpen] = useState(false);
@@ -79,10 +89,6 @@ export function DashboardHomePage() {
 
   // Hook para buscar dados do cache local com fallback para arquivos de storage
   const report134Cache = useCachedReport134();
-  
-  console.log('Dashboard - report134Cache:', report134Cache);
-  console.log('Dashboard - report134Cache.data:', report134Cache.data);
-  console.log('Dashboard - report134Cache.isLoading:', report134Cache.isLoading);
   console.log('Dashboard - report134Cache.error:', report134Cache.error);
 
   // Estado para modal de criação/edição
@@ -95,26 +101,30 @@ export function DashboardHomePage() {
     setCreateModalOpen(true);
   };
 
-  const handleCreateAcompanhamento = (dados: { nome: string; descricao: string; cursos: any[] }) => {
-    if (editingAcompanhamento) {
-      // Editando acompanhamento existente
-      updateAcompanhamento(editingAcompanhamento.id, {
+  const handleCreateAcompanhamento = async (dados: { nome: string; descricao: string; cursos: any[] }) => {
+    try {
+      const base = {
         nome: dados.nome,
         descricao: dados.descricao,
         cursos: dados.cursos,
         mostrar_card_resumo: true,
-      });
-      setEditingAcompanhamento(null);
-    } else {
-      // Criando novo acompanhamento
-      addAcompanhamento({
-        nome: dados.nome,
-        descricao: dados.descricao,
-        cursos: dados.cursos,
-        mostrar_card_resumo: true,
-      });
+        criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString()
+      };
+
+      if (editingAcompanhamento) {
+        // Editando acompanhamento existente
+        await updateAcompanhamento({ id: editingAcompanhamento.id, ...base });
+        setEditingAcompanhamento(null);
+      } else {
+        // Criando novo acompanhamento
+        await createAcompanhamento(base);
+      }
+      setCreateModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao salvar acompanhamento:', error);
+      alert('Erro ao salvar acompanhamento. Tente novamente.');
     }
-    setCreateModalOpen(false);
   };
 
   const handleEdit = (acompanhamento: Acompanhamento) => {
@@ -122,9 +132,14 @@ export function DashboardHomePage() {
     setCreateModalOpen(true);
   };
 
-  const handleDelete = (acompanhamento: Acompanhamento) => {
+  const handleDelete = async (acompanhamento: Acompanhamento) => {
     if (window.confirm(`Tem certeza que deseja excluir o acompanhamento "${acompanhamento.nome}"?`)) {
-      removeAcompanhamento(acompanhamento.id);
+      try {
+        await deleteAcompanhamento(acompanhamento.id);
+      } catch (error) {
+        console.error('Erro ao excluir acompanhamento:', error);
+        alert('Erro ao excluir acompanhamento. Tente novamente.');
+      }
     }
   };
 

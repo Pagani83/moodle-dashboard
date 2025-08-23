@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import type { NextAuthConfig } from 'next-auth'
-import { getUserByEmail, updateLastLogin } from './user-storage'
+import { prisma } from './prisma'
 
 const config = {
   pages: {
@@ -20,7 +20,9 @@ const config = {
             return null
           }
 
-          const user = getUserByEmail(credentials.email as string)
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string }
+          })
 
           if (!user || !user.active) {
             return null
@@ -36,7 +38,10 @@ const config = {
           }
 
           // Update last login
-          updateLastLogin(user.id)
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() }
+          })
 
           return {
             id: user.id,

@@ -15,7 +15,7 @@ interface AcompanhamentosGridProps {
 }
 
 export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, onDelete, reportData = [] }: AcompanhamentosGridProps) {
-  const { acompanhamentos: localAcompanhamentos, theme } = useMoodleStore();
+  const { theme } = useMoodleStore();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   // Hook para sincronizar com API
@@ -30,8 +30,8 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
   console.log('AcompanhamentosGrid - persistentAcompanhamentos:', persistentAcompanhamentos);
   console.log('AcompanhamentosGrid - isLoading:', isLoadingPersistent);
 
-  // Usar dados persistentes se disponíveis, senão usar locais
-  const acompanhamentos = persistentAcompanhamentos.length > 0 ? persistentAcompanhamentos : localAcompanhamentos;
+  // Usar apenas dados persistentes da API
+  const acompanhamentos = persistentAcompanhamentos;
 
   const handleDelete = (acompanhamento: Acompanhamento) => {
     const confirmation = window.confirm(`Tem certeza que deseja excluir o acompanhamento "${acompanhamento.nome}"?`);
@@ -121,7 +121,7 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 px-4">
       {acompanhamentos.map((acompanhamento) => {
         const isExpanded = expandedCards.has(acompanhamento.id);
         const courseCount = acompanhamento.cursos?.length || 0;
@@ -146,16 +146,16 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
             `}>
               {/* Header com designs únicos */}
               <div className={`
-                p-6 pb-4 border-b-2
+                p-4 pb-3 border-b-2
                 ${theme === 'dark'
                   ? 'bg-gradient-to-br from-slate-700 via-slate-700 to-slate-600 border-slate-500'
                   : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-100'
                 }
               `}>
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <h3 
-                      className={`text-2xl font-bold mb-2 leading-tight cursor-help tracking-tight ${
+                      className={`text-lg font-bold mb-2 leading-tight cursor-help tracking-tight ${
                         theme === 'dark' ? 'text-white' : 'text-slate-800'
                       }`}
                       title={acompanhamento.nome}
@@ -214,17 +214,17 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
               </div>
 
               {/* Conteúdo Principal do Card */}
-              <div className={`p-6 ${
+              <div className={`p-4 ${
                 theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50/30'
               }`}>
                 {/* Lista de Cursos com Design Distinto */}
                 {courseCount > 0 && (
-                  <div className="space-y-4 mb-6">
-                    <div className="space-y-3">
+                  <div className="space-y-2 mb-4">
+                    <div className="space-y-2">
                       {coursesToShow?.map((curso: any) => (
                         <div
                           key={curso.courseid}
-                          className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+                          className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
                             theme === 'dark'
                               ? 'bg-slate-700 border-slate-600 hover:border-slate-500'
                               : 'bg-white border-slate-200 hover:shadow-sm'
@@ -285,53 +285,53 @@ export function AcompanhamentosGrid({ onOpenDetailModal, onCreateNew, onEdit, on
                 )}
 
                 {/* Estatísticas com Cards Individuais */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className={`text-center p-4 rounded-xl border ${
+                <div className="grid grid-cols-3 gap-3 mt-6">
+                  <div className={`text-center p-3 rounded-xl border-2 shadow-sm flex flex-col items-center justify-center min-h-[80px] ${
                     theme === 'dark'
-                      ? 'bg-blue-900/20 border-blue-800'
+                      ? 'bg-blue-900/30 border-blue-700'
                       : 'bg-blue-50 border-blue-200'
                   }`}>
-                    <div className={`text-2xl font-bold ${
+                    <div className={`text-lg font-bold mb-1 ${
                       theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
                     }`}>
                       {stats.totalInscricoes}
                     </div>
-                    <div className={`text-xs font-medium uppercase tracking-wider ${
+                    <div className={`text-[10px] font-medium uppercase tracking-wide text-center leading-tight ${
                       theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                     }`}>
-                      Alunos
+                      ALUNOS
                     </div>
                   </div>
-                  <div className={`text-center p-4 rounded-xl border ${
+                  <div className={`text-center p-3 rounded-xl border-2 shadow-sm flex flex-col items-center justify-center min-h-[80px] ${
                     theme === 'dark'
-                      ? 'bg-emerald-900/20 border-emerald-800'
+                      ? 'bg-emerald-900/30 border-emerald-700'
                       : 'bg-emerald-50 border-emerald-200'
                   }`}>
-                    <div className={`text-2xl font-bold ${
+                    <div className={`text-lg font-bold mb-1 ${
                       theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'
                     }`}>
                       {stats.totalConclusoes}
                     </div>
-                    <div className={`text-xs font-medium uppercase tracking-wider ${
+                    <div className={`text-[10px] font-medium uppercase tracking-wide text-center leading-tight ${
                       theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
                     }`}>
-                      Concluídos
+                      CONCLUÍDOS
                     </div>
                   </div>
-                  <div className={`text-center p-4 rounded-xl border ${
+                  <div className={`text-center p-3 rounded-xl border-2 shadow-sm flex flex-col items-center justify-center min-h-[80px] ${
                     theme === 'dark'
-                      ? 'bg-violet-900/20 border-violet-800'
+                      ? 'bg-violet-900/30 border-violet-700'
                       : 'bg-violet-50 border-violet-200'
                   }`}>
-                    <div className={`text-2xl font-bold ${
+                    <div className={`text-lg font-bold mb-1 ${
                       theme === 'dark' ? 'text-violet-300' : 'text-violet-700'
                     }`}>
                       {stats.totalInscricoes > 0 ? Math.round((stats.totalConclusoes / stats.totalInscricoes) * 100) : 0}%
                     </div>
-                    <div className={`text-xs font-medium uppercase tracking-wider ${
+                    <div className={`text-[10px] font-medium uppercase tracking-wide text-center leading-tight ${
                       theme === 'dark' ? 'text-violet-400' : 'text-violet-600'
                     }`}>
-                      Conclusões
+                      CONCLUSÕES
                     </div>
                   </div>
                 </div>

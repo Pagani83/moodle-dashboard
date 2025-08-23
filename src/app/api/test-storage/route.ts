@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getAllUsers } from '@/lib/user-storage'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const users = getAllUsers()
-    console.log('Users in storage:', users.length)
+    const users = await prisma.user.findMany()
+    console.log('Users in database:', users.length)
     return NextResponse.json({ 
       status: 'success', 
       userCount: users.length,
-      users: users.map(u => ({ id: u.id, email: u.email, name: u.name, role: u.role }))
+      users: users.map((u: any) => ({ id: u.id, email: u.email, name: u.name, role: u.role }))
     })
   } catch (error) {
     console.error('Error in test endpoint:', error)

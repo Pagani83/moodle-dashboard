@@ -15,18 +15,27 @@ export function useAcompanhamentos() {
     queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id],
     queryFn: async () => {
       console.log('useAcompanhamentos - fetching data for user:', session?.user?.id)
-      const response = await fetch('/api/acompanhamentos')
+      const response = await fetch('/api/acompanhamentos', {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       if (!response.ok) {
-        throw new Error('Failed to fetch acompanhamentos')
+        const errorText = await response.text()
+        console.error('API Error:', response.status, errorText)
+        throw new Error(`Failed to fetch acompanhamentos: ${response.status}`)
       }
       const data = await response.json()
       console.log('Fetched acompanhamentos for user:', session?.user?.id, data.acompanhamentos)
       return data.acompanhamentos as Acompanhamento[]
     },
     enabled: !!session?.user?.id,
-    staleTime: 1 * 60 * 1000, // 1 minute (reduzido para forçar mais atualizações)
-    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000, // 30 segundos
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: false, // Reduzir calls desnecessárias
     refetchOnMount: true,
+    retry: 1, // Apenas 1 retry
+    retryDelay: 1000 // 1 segundo de delay
   })
 }
 

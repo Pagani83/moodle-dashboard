@@ -36,26 +36,23 @@ export default function AcompanhamentosView() {
     acompanhamentoAtivo,
     addAcompanhamento: addLocalAcompanhamento,
     updateAcompanhamento: updateLocalAcompanhamento,
-    removeAcompanhamento: removeLocalAcompanhamento
+    removeAcompanhamento: removeLocalAcompanhamento,
+    clearAllAcompanhamentos
   } = useMoodleStore();
   
   const client = useSafeMoodleClient();
   const report134 = useReport134Full(client!, false);
 
-  // Sincronizar dados persistentes com store local
+  // Limpar dados locais na inicialização - usar apenas dados da API
   useEffect(() => {
-    if (persistentAcompanhamentos.length > 0) {
-      // Atualizar store local com dados da API
-      persistentAcompanhamentos.forEach(acomp => {
-        if (!localAcompanhamentos.find(local => local.id === acomp.id)) {
-          addLocalAcompanhamento(acomp);
-        }
-      });
+    if (localAcompanhamentos.length > 0) {
+      console.log('🧹 Limpando acompanhamentos locais obsoletos:', localAcompanhamentos.length);
+      clearAllAcompanhamentos();
     }
-  }, [persistentAcompanhamentos, localAcompanhamentos, addLocalAcompanhamento]);
+  }, []); // Executar apenas uma vez na inicialização
 
-  // Usar dados persistentes como fonte principal
-  const acompanhamentos = persistentAcompanhamentos.length > 0 ? persistentAcompanhamentos : localAcompanhamentos;
+  // Usar apenas dados persistentes da API
+  const acompanhamentos = persistentAcompanhamentos;
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -153,8 +150,6 @@ export default function AcompanhamentosView() {
     
     try {
       await deleteAcompanhamento(id);
-      // Também remover do store local
-      removeLocalAcompanhamento(id);
       // Se era o ativo, limpar seleção
       if (acompanhamentoAtivo === id) {
         setAcompanhamentoAtivo(null);

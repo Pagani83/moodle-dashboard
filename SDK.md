@@ -500,6 +500,138 @@ const {
 
 ## 🔐 Sistema de Autenticação
 
+### **Integração Prisma Completa**
+O sistema de autenticação utiliza **Prisma ORM** para persistência completa de usuários.
+
+#### **Modelo de Dados**
+```prisma
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          UserRole  @default(USER)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+  
+  // NextAuth fields
+  accounts      Account[]
+  sessions      Session[]
+  
+  // Acompanhamentos relationship
+  acompanhamentos Acompanhamento[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model Acompanhamento {
+  id          String   @id @default(cuid())
+  courseId    String
+  courseName  String
+  shortName   String
+  fullName    String
+  status      AcompanhamentoStatus @default(CURSANDO)
+  progress    Float    @default(0)
+  grade       Float?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, courseId])
+  @@map("acompanhamentos")
+}
+
+enum AcompanhamentoStatus {
+  CURSANDO
+  REPROVADO_EVADIDO
+  CONCLUIDO
+}
+```
+
+### **APIs de Usuários com Prisma**
+```typescript
+// src/app/api/users/route.ts
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+
+// GET - Listar usuários
+export async function GET() {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      active: true,
+      createdAt: true,
+      lastLogin: true,
+      updatedAt: true
+    }
+  })
+  return NextResponse.json({ users })
+}
+
+// POST - Criar usuário
+export async function POST(request: NextRequest) {
+  const { email, name, password, role } = await request.json()
+  
+  const hashedPassword = await bcrypt.hash(password, 12)
+  
+  const newUser = await prisma.user.create({
+    data: {
+      email,
+      name,
+      password: hashedPassword,
+      role: role || 'USER',
+      active: true
+    }
+  })
+  
+  return NextResponse.json({ user: newUser }, { status: 201 })
+}
+
+// PUT - Atualizar usuário
+export async function PUT(request: NextRequest) {
+  const { id, name, role, active, password } = await request.json()
+  
+  const updates: any = {}
+  if (name !== undefined) updates.name = name
+  if (role !== undefined) updates.role = role
+  if (active !== undefined) updates.active = active
+  if (password) {
+    updates.password = await bcrypt.hash(password, 12)
+  }
+  
+  const updatedUser = await prisma.user.update({
+    where: { id },
+    data: updates
+  })
+  
+  return NextResponse.json({ user: updatedUser })
+}
+
+// DELETE - Deletar usuário
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  
+  await prisma.user.delete({
+    where: { id }
+  })
+  
+  return NextResponse.json({ message: 'User deleted successfully' })
+}
+```
+
 ### `<AuthProvider />`
 Provider de contexto para gerenciar autenticação em toda a aplicação.
 
@@ -541,11 +673,16 @@ import { UserManagement } from '@/components/admin/user-management'
 ```
 
 **Funcionalidades:**
-- ✅ CRUD completo de usuários
+- ✅ CRUD completo de usuários com Prisma
 - ✅ Controle de roles (ADMIN/USER)
 - ✅ Ativar/desativar usuários
 - ✅ Interface modal para criação/edição
 - ✅ Validação de formulários
+- ✅ **Persistência em banco de dados**
+- ✅ **Tracking de lastLogin automático**
+- ✅ **Relacionamentos com Acompanhamentos**
+- ✅ **Cascade delete** - Remove acompanhamentos ao deletar usuário
+- ✅ **Proteção** - Não permite deletar o último admin
 
 ### Hook `useSession`
 Hook para acessar dados da sessão atual.
@@ -662,14 +799,15 @@ export const config = {
 }
 ```
 
-### Configuração NextAuth.js
-Arquivo de configuração principal da autenticação.
+### **Configuração NextAuth.js com Prisma**
+Arquivo de configuração principal da autenticação integrado ao Prisma.
 
 ```typescript
 // src/lib/auth.ts
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
+import { prisma } from './prisma'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -679,8 +817,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        // Lógica de autenticação
-        return user
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            return null
+          }
+
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string }
+          })
+
+          if (!user || !user.active) {
+            return null
+          }
+
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password as string,
+            user.password
+          )
+
+          if (!isPasswordValid) {
+            return null
+          }
+
+          // Update last login
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() }
+          })
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role as 'ADMIN' | 'USER',
+          }
+        } catch (error) {
+          console.error('Auth error:', error)
+          return null
+        }
       }
     })
   ],
@@ -690,17 +864,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      session.user.role = token.role
+      if (token && session.user) {
+        session.user.id = token.sub!
+        session.user.role = token.role as 'ADMIN' | 'USER'
+      }
       return session
     }
   }
 })
 ```
 
-### Variáveis de Ambiente Necessárias
+### **Variáveis de Ambiente Necessárias**
 ```env
+# Banco de Dados
+DATABASE_URL="file:./dev.db"
+
+# Autenticação
 NEXTAUTH_URL=http://localhost:3001
 NEXTAUTH_SECRET=sua_chave_secreta_forte
+```
+
+### **Cliente Prisma**
+```typescript
+// src/lib/prisma.ts
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 ```
 
 ## �🔧 Hooks Customizados
@@ -986,6 +1181,7 @@ npm publish
 
 ## 🔒 Requisitos
 
+### **Core**
 - **React** 19+
 - **TypeScript** 5+
 - **Tailwind CSS** 4+
@@ -994,6 +1190,17 @@ npm publish
 - **ExcelJS** 4+ (para sistema de cache)
 - **Node.js** 18+ (para file system e cron jobs)
 - **Vercel/Netlify** (para cron jobs automáticos)
+
+### **Banco de Dados**
+- **Prisma** 5+ (ORM)
+- **SQLite** (desenvolvimento)
+- **PostgreSQL** 14+ (produção recomendado)
+- **MySQL** 8+ (alternativa)
+
+### **Autenticação**
+- **NextAuth.js** 5+
+- **bcryptjs** 2+ (hash de senhas)
+- **JWT** (tokens de sessão)
 
 ## 📈 Performance
 
@@ -1004,6 +1211,9 @@ npm publish
 - **Auto-Update**: Cron job diário com impacto zero na performance
 - **Storage Resiliente**: Fallback local para alta disponibilidade
 - **Universal Timestamps**: Consistência global sem overhead
+- **Database Performance**: Prisma com connection pooling
+- **Query Optimization**: Seleção explícita de campos
+- **Index Strategy**: Índices otimizados para queries frequentes
 
 ## 🤝 Contribuição SDK
 
@@ -1017,6 +1227,17 @@ Para contribuir com o SDK:
 6. Submeta Pull Request
 
 ## 📝 Changelog
+
+### v2.2.0 - Integração Prisma Completa
+- ✅ **Prisma ORM Integration** - Sistema completo de persistência de dados
+- ✅ **User Management com Banco** - CRUD completo com SQLite/PostgreSQL
+- ✅ **Acompanhamentos Model** - Relacionamento User -> Acompanhamentos
+- ✅ **NextAuth.js + Prisma** - Autenticação integrada ao banco
+- ✅ **Auto lastLogin Tracking** - Atualização automática de sessão
+- ✅ **Cascade Delete** - Segurança nos relacionamentos
+- ✅ **Migration System** - Versionamento do schema do banco
+- ✅ **Type-Safe Database** - Tipagem automática com Prisma Client
+- ✅ **Development Tools** - Prisma Studio para visualização dos dados
 
 ### v2.1.0 - Sistema de Auto-Update Inteligente  
 - ✅ **Vercel Cron Integration** - Execução automática diária às 5h UTC

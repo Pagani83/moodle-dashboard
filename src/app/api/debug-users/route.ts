@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getAllUsers } from '@/lib/user-storage'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
-  const users = getAllUsers()
+  const users = await prisma.user.findMany()
   return NextResponse.json({ 
     count: users.length,
-    users: users.map(u => ({ 
+    users: users.map((u: any) => ({ 
       id: u.id, 
       email: u.email, 
       name: u.name, 

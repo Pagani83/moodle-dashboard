@@ -1,6 +1,6 @@
 /**
  * Widget YouTube para Dashboard - Versão Retrátil
- * Mostra estatísticas do canal, crescimento de inscritos, vídeos recentes
+ * Mostra estatísticas do canal (otimizado para poupar API quota)
  */
 
 import React, { useState } from 'react';
@@ -13,7 +13,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useMoodleStore } from '@/store/moodle-store';
-import { useYouTubeDashboard, YouTubeUtils } from '@/hooks/use-youtube';
+import { useYouTubeChannel, YouTubeUtils } from '@/hooks/use-youtube';
 
 interface YouTubeWidgetProps {
   channelHandle?: string;
@@ -31,6 +31,7 @@ export function YouTubeWidget({
   const { theme } = useMoodleStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasApiError, setHasApiError] = useState(false); // Memorizar erros de API
+  const [dataLoadedOnce, setDataLoadedOnce] = useState(false); // Controlar carregamento único
   
   // Usar variáveis de ambiente se não passadas como props
   const finalApiKey = apiKey || process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
@@ -47,21 +48,32 @@ export function YouTubeWidget({
     channelId: finalChannelId || ''
   };
 
+  // ESTRATÉGIA CONSERVADORA: Só habilitar o hook uma vez por sessão do usuário
+  const shouldEnableQuery = !!hasValidConfig && !hasApiError && !dataLoadedOnce;
+
   const {
-    channel,
+    data: channel,
     isLoading,
     isError,
     error,
-    refetch,
-    metrics
-  } = useYouTubeDashboard(config, !!hasValidConfig && !hasApiError); // Desabilitar se já teve erro de API
+    refetch
+  } = useYouTubeChannel(config, shouldEnableQuery); // USAR APENAS O HOOK BÁSICO!
 
   // Memorizar erros de API para evitar re-tentativas
   React.useEffect(() => {
     if (isError && error?.message?.includes('403')) {
+      console.warn('🚫 YouTube API: Quota exceeded, desabilitando futuras calls');
       setHasApiError(true);
     }
   }, [isError, error]);
+
+  // Marcar como carregado quando obtiver dados com sucesso
+  React.useEffect(() => {
+    if (channel && !isLoading && !isError) {
+      setDataLoadedOnce(true);
+      console.log('✅ YouTube: Dados carregados com sucesso, desabilitando futuras calls');
+    }
+  }, [channel, isLoading, isError]);
 
   // Se não há configuração válida, mostra mensagem de configuração
   if (!hasValidConfig) {
@@ -192,10 +204,20 @@ export function YouTubeWidget({
               theme === 'dark' ? 'text-red-400' : 'text-red-500'
             }`} />
             <div className="flex-1 min-w-0">
-              <h3 className={`font-semibold text-sm ${
+              <h3 className={`font-semibold text-sm flex items-center gap-2 ${
                 theme === 'dark' ? 'text-white' : 'text-slate-900'
               }`}>
                 Estatísticas YouTube
+                {/* Indicador de Cache */}
+                {dataLoadedOnce && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    theme === 'dark' 
+                      ? 'bg-green-900/20 text-green-400 border border-green-800' 
+                      : 'bg-green-100 text-green-700 border border-green-200'
+                  }`}>
+                    Cache
+                  </span>
+                )}
               </h3>
               <a 
                 href={YouTubeUtils.getChannelUrl(channel.id)}
@@ -218,7 +240,7 @@ export function YouTubeWidget({
                     <span className={`text-sm font-semibold ${
                       theme === 'dark' ? 'text-white' : 'text-slate-900'
                     }`}>
-                      {(metrics?.totalSubscribers || 0).toLocaleString('pt-BR')}
+                      {(Number(channel?.statistics?.subscriberCount) || 0).toLocaleString('pt-BR')}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -228,7 +250,7 @@ export function YouTubeWidget({
                     <span className={`text-sm font-semibold ${
                       theme === 'dark' ? 'text-white' : 'text-slate-900'
                     }`}>
-                      {YouTubeUtils.formatViews(metrics?.totalViews || 0)}
+                      {YouTubeUtils.formatViews(Number(channel?.statistics?.viewCount) || 0)}
                     </span>
                   </div>
                 </div>
@@ -264,14 +286,14 @@ export function YouTubeWidget({
             <StatCard
               icon={<Users className="h-4 w-4" />}
               label="Total de Inscritos"
-              value={(metrics?.totalSubscribers || 0).toLocaleString('pt-BR')}
+              value={(Number(channel?.statistics?.subscriberCount) || 0).toLocaleString('pt-BR')}
               theme={theme}
               color="blue"
             />
             <StatCard
               icon={<Eye className="h-4 w-4" />}
               label="Total de Visualizações"
-              value={YouTubeUtils.formatViews(metrics?.totalViews || 0)}
+              value={YouTubeUtils.formatViews(Number(channel?.statistics?.viewCount) || 0)}
               theme={theme}
               color="emerald"
             />

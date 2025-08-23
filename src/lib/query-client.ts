@@ -49,6 +49,16 @@ export const QUERY_CONFIGS = {
     gcTime: 15 * 60 * 1000, // 15 minutos
   },
   
+  // YouTube API - OTIMIZADO PARA POUPAR QUOTA
+  youtube: {
+    staleTime: 60 * 60 * 1000, // 1 hora - muito conservador
+    gcTime: 24 * 60 * 60 * 1000, // 24 horas - manter por muito tempo
+    retry: 1, // Apenas 1 tentativa
+    refetchOnWindowFocus: false, // NUNCA refetch automaticamente
+    refetchOnMount: false, // NUNCA refetch ao montar
+    refetchOnReconnect: false, // NUNCA refetch ao reconectar
+  },
+  
   // Dados em tempo real
   realtime: {
     staleTime: 30 * 1000, // 30 segundos
