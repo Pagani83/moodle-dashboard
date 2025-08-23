@@ -4,5 +4,10 @@
       "path": "/api/auto-update",
       "schedule": "0 5 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
 }
