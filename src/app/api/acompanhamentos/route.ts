@@ -7,14 +7,22 @@ let userAcompanhamentos: Record<string, Acompanhamento[]> = {}
 
 export async function GET() {
   try {
+    console.log('🔍 API acompanhamentos - GET called')
     const session = await auth()
+    console.log('🔍 API acompanhamentos - session:', session)
     
     if (!session?.user) {
+      console.log('❌ API acompanhamentos - Unauthorized: no session or user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const userId = session.user.id!
+    console.log('🔍 API acompanhamentos - userId:', userId)
+    console.log('🔍 API acompanhamentos - userAcompanhamentos keys:', Object.keys(userAcompanhamentos))
+    console.log('🔍 API acompanhamentos - userAcompanhamentos:', userAcompanhamentos)
+    
     const acompanhamentos = userAcompanhamentos[userId] || []
+    console.log('🔍 API acompanhamentos - acompanhamentos for user:', userId, acompanhamentos)
     
     console.log(`Fetching acompanhamentos for user ${userId}:`, acompanhamentos.length, 'items')
     
