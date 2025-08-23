@@ -16,6 +16,8 @@ export async function GET() {
     const userId = session.user.id!
     const acompanhamentos = userAcompanhamentos[userId] || []
     
+    console.log(`Fetching acompanhamentos for user ${userId}:`, acompanhamentos.length, 'items')
+    
     return NextResponse.json({ 
       acompanhamentos,
       userId,
@@ -53,6 +55,9 @@ export async function POST(request: NextRequest) {
     }
 
     userAcompanhamentos[userId].push(newAcompanhamento)
+    
+    console.log(`Created acompanhamento for user ${userId}:`, newAcompanhamento.nome)
+    console.log(`Total acompanhamentos for user ${userId}:`, userAcompanhamentos[userId].length)
 
     return NextResponse.json({ 
       acompanhamento: newAcompanhamento,

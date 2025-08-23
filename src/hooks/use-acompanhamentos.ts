@@ -16,10 +16,13 @@ export function useAcompanhamentos() {
         throw new Error('Failed to fetch acompanhamentos')
       }
       const data = await response.json()
+      console.log('Fetched acompanhamentos for user:', session?.user?.id, data.acompanhamentos)
       return data.acompanhamentos as Acompanhamento[]
     },
     enabled: !!session?.user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute (reduzido para forçar mais atualizações)
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   })
 }
 
@@ -43,8 +46,11 @@ export function useCreateAcompanhamento() {
       
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Created acompanhamento:', data)
       queryClient.invalidateQueries({ queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id] })
+      // Force refetch to ensure UI updates
+      queryClient.refetchQueries({ queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id] })
     }
   })
 }
@@ -69,8 +75,10 @@ export function useUpdateAcompanhamento() {
       
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Updated acompanhamento:', data)
       queryClient.invalidateQueries({ queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id] })
+      queryClient.refetchQueries({ queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id] })
     }
   })
 }
@@ -93,8 +101,10 @@ export function useDeleteAcompanhamento() {
       
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      console.log('Deleted acompanhamento:', variables)
       queryClient.invalidateQueries({ queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id] })
+      queryClient.refetchQueries({ queryKey: [ACOMPANHAMENTOS_KEY, session?.user?.id] })
     }
   })
 }
