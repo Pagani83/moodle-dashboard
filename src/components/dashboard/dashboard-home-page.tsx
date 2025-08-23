@@ -24,7 +24,7 @@ import {
   REPORT_134_CONFIG
 } from '@/hooks/use-report-134';
 import { useMoodleStore } from '@/store/moodle-store';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Settings, 
   Database, 
@@ -775,6 +775,7 @@ function Report134View({
   forceUpdate: any;
   report134Cache: any;
 }) {
+  const queryClient = useQueryClient();
   const restoreFromFile = useRestoreReport134FromFile();
   const [forcingCache, setForcingCache] = useState(false);
   const [lastUpdateMsg, setLastUpdateMsg] = useState<string | null>(null);
@@ -835,6 +836,9 @@ function Report134View({
                     const durMs = typeof payload?.fetchDuration === 'number' ? payload.fetchDuration : 0;
                     const secs = Math.round(durMs / 100) / 10;
                     setLastUpdateMsg(`Atualizado em ${when.toLocaleString('pt-BR')} • ${secs || 0}s`);
+                    
+                    // Invalidar a query do cache para refletir os dados atualizados no timestamp principal
+                    queryClient.invalidateQueries({ queryKey: ['report134-cache'] });
                   },
                   onSettled: () => setForcingCache(false),
                 });
