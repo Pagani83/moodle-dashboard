@@ -32,8 +32,8 @@ jobs:
           # Primeiro, chama a API para atualizar dados frescos do Moodle
           if [ -n "$CRON_SECRET" ]; then
             echo "🔄 Refreshing Moodle data via API..."
-            # Usar a URL do próprio deployment para chamar a API
-            VERCEL_URL="https://moodle-dashboard-coral.vercel.app"
+            # Usar a URL principal do deployment
+            VERCEL_URL="https://moodle-dashboard.vercel.app"
             curl -f "${VERCEL_URL}/api/auto-update?token=${CRON_SECRET}&refresh_data=true" || echo "⚠️  API call failed, continuing with git update..."
             sleep 5
           else
