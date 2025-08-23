@@ -183,16 +183,50 @@ export function DashboardHomePage() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Status de conexão */}
+            {/* Status dinâmico de conexão e cache */}
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1">
-                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                <span 
-                  className="text-xs"
-                  style={{ color: theme === 'light' ? '#22c55e' : '#4ade80' }}
-                >
-                  Conectado ao Moodle
-                </span>
+                {report134Cache.isLoading ? (
+                  <>
+                    <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <span 
+                      className="text-xs"
+                      style={{ color: theme === 'light' ? '#eab308' : '#fbbf24' }}
+                    >
+                      Carregando cache...
+                    </span>
+                  </>
+                ) : report134Cache.error ? (
+                  <>
+                    <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                    <span 
+                      className="text-xs"
+                      style={{ color: theme === 'light' ? '#ef4444' : '#f87171' }}
+                    >
+                      Erro no cache
+                    </span>
+                  </>
+                ) : report134Cache.data?.data && report134Cache.data.data.length > 0 ? (
+                  <>
+                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <span 
+                      className="text-xs"
+                      style={{ color: theme === 'light' ? '#22c55e' : '#4ade80' }}
+                    >
+                      Cache ativo ({report134Cache.data.data.length} registros)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                    <span 
+                      className="text-xs"
+                      style={{ color: theme === 'light' ? '#64748b' : '#94a3b8' }}
+                    >
+                      Cache vazio
+                    </span>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => {
