@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
           password: adminHash,
           role: 'ADMIN',
           active: true,
-          emailVerified: new Date()
         }
       })
       
@@ -33,7 +32,6 @@ export async function POST(request: NextRequest) {
           password: yourHash,
           role: 'ADMIN', 
           active: true,
-          emailVerified: new Date()
         }
       })
       
@@ -46,7 +44,6 @@ export async function POST(request: NextRequest) {
           password: marciaHash,
           role: 'USER',
           active: true, 
-          emailVerified: new Date()
         }
       })
       
@@ -95,7 +92,6 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         role: 'ADMIN',
-        emailVerified: new Date() // Marcar como verificado
       }
     })
 

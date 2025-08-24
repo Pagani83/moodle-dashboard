@@ -56,7 +56,6 @@ export async function GET() {
           password: userData.password,
           role: userData.role,
           active: true,
-          emailVerified: new Date()
         }
       })
       

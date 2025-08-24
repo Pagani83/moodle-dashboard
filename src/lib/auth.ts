@@ -47,7 +47,6 @@ const config = {
                     password: hashedPassword,
                     role: userData.role as 'ADMIN' | 'USER',
                     active: true,
-                    emailVerified: new Date()
                   }
                 })
               }

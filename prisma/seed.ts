@@ -24,7 +24,6 @@ async function main() {
         password: hashedPassword,
         role: 'ADMIN',
         active: true,
-        emailVerified: new Date()
       }
     })
     
@@ -49,7 +48,6 @@ async function main() {
         password: hashedPassword,
         role: 'ADMIN',
         active: true,
-        emailVerified: new Date()
       }
     })
     
@@ -74,7 +72,6 @@ async function main() {
         password: hashedPassword,
         role: 'USER',
         active: true,
-        emailVerified: new Date()
       }
     })
     
