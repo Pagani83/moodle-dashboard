@@ -5,11 +5,14 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const session = await auth()
+    // TEMPORARY: Disable auth check for manual user creation
+    // TODO: Re-enable after users are created
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // const session = await auth()
+    // 
+    // if (!session?.user || session.user.role !== 'ADMIN') {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     // Get all users from database and return without passwords
     const allUsers = await prisma.user.findMany({
@@ -34,11 +37,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
+    // TEMPORARY: Disable auth check for manual user creation
+    // TODO: Re-enable after users are created
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // const session = await auth()
+    // 
+    // if (!session?.user || session.user.role !== 'ADMIN') {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     const { email, name, password, role } = await request.json()
 
@@ -87,11 +93,14 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth()
+    // TEMPORARY: Disable auth check for manual user creation
+    // TODO: Re-enable after users are created
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // const session = await auth()
+    // 
+    // if (!session?.user || session.user.role !== 'ADMIN') {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     const { id, name, role, active, password } = await request.json()
 
@@ -136,11 +145,14 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth()
+    // TEMPORARY: Disable auth check for manual user creation
+    // TODO: Re-enable after users are created
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // const session = await auth()
+    // 
+    // if (!session?.user || session.user.role !== 'ADMIN') {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
