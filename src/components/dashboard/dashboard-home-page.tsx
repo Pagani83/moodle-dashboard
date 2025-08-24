@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   useMoodleClient, 
   useMoodleStatus, 
@@ -86,6 +86,21 @@ export function DashboardHomePage() {
   const [modalAcompanhamento, setModalAcompanhamento] = useState<Acompanhamento | null>(null);
   const { config, filters } = useMoodleStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'acompanhamentos' | 'report134' | 'usuarios' | 'config'>('dashboard');
+
+  // TEMPORARY: Auto-setup users on component mount
+  useEffect(() => {
+    const setupUsers = async () => {
+      try {
+        console.log('Attempting to setup users automatically...')
+        const response = await fetch('/api/setup-users', { method: 'POST' })
+        const data = await response.json()
+        console.log('Setup users response:', data)
+      } catch (error) {
+        console.log('Auto-setup failed (expected with Vercel protection):', error)
+      }
+    }
+    setupUsers()
+  }, [])
 
   // Hook para buscar dados do cache local com fallback para arquivos de storage
   const report134Cache = useCachedReport134();
