@@ -480,11 +480,13 @@ Usuários: 3 padrão (admin, 2 operacionais)
 
 ### **🚀 URLs de Produção Ativas**
 ```
-🌐 Principal: https://moodle-dashboard-pagani83s-projects.vercel.app
-🔐 Login: https://moodle-dashboard-pagani83s-projects.vercel.app/auth/signin
-👥 Admin: https://moodle-dashboard-pagani83s-projects.vercel.app/admin/users
+🌐 Principal: https://moodle-dashboard.vercel.app
+🔐 Login: https://moodle-dashboard.vercel.app/auth/signin
+👥 Admin: https://moodle-dashboard.vercel.app/admin/users
 
 Status: ✅ 100% OPERACIONAL
+Database: ✅ PostgreSQL (Neon.tech)
+Authentication: ✅ NextAuth v5 + bcrypt
 Uptime: ✅ 99.9% (Vercel SLA)
 Performance: ✅ <2s first load
 ```
@@ -522,15 +524,115 @@ npm run lint         # Verificar código
 
 ## 🌐 Deploy
 
-### **Vercel (Recomendado)**
-1. Conecte seu repositório GitHub ao Vercel
-2. Configure as variáveis de ambiente
-3. Deploy automático a cada push
+### **🚀 Deploy em Produção (Vercel + PostgreSQL)**
 
-### **Outras Plataformas**
-- **Netlify**: Build command: `npm run build`, Publish: `.next`
-- **Railway**: Detecção automática Next.js
-- **DigitalOcean**: App Platform com Node.js
+O projeto está configurado para deploy completo com banco de dados PostgreSQL em produção.
+
+#### **1. Configuração do Banco PostgreSQL**
+```bash
+# 1. Criar conta no Neon.tech (gratuito)
+https://neon.tech
+
+# 2. Criar projeto PostgreSQL
+- Nome: moodle-dashboard-db
+- Região: us-east-1 (próxima do Brasil)
+- Versão: PostgreSQL 16+
+
+# 3. Copiar connection string
+postgresql://username:password@hostname/database?sslmode=require
+```
+
+#### **2. Deploy no Vercel**
+```bash
+# 1. Conectar repositório GitHub ao Vercel
+https://vercel.com/dashboard
+
+# 2. Configurar variáveis de ambiente:
+DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+NEXTAUTH_URL=https://seu-dominio.vercel.app
+NEXTAUTH_SECRET=sua_chave_secreta_forte
+NEXT_PUBLIC_YOUTUBE_API_KEY=sua_api_key
+NEXT_PUBLIC_YOUTUBE_CHANNEL_HANDLE=@seu_canal
+NEXT_PUBLIC_MOODLE_BASE_URL=https://seu-moodle.com/webservice/rest
+NEXT_PUBLIC_MOODLE_TOKEN=seu_token_moodle
+
+# 3. Deploy automático
+git push origin main
+```
+
+#### **3. Pós-Deploy**
+```bash
+# Os usuários são criados automaticamente no primeiro acesso:
+Email: admin@moodle.local / Senha: admin123 (ADMIN)
+Email: mmpagani@tjrs.jus.br / Senha: cjud@2233 (ADMIN)  
+Email: marciacampos@tjrs.jus.br / Senha: cjud@dicaf (USER)
+```
+
+#### **4. Verificação do Deploy**
+```bash
+# Testar conexão com banco:
+GET https://seu-app.vercel.app/api/debug/users
+
+# Testar autenticação:
+https://seu-app.vercel.app/auth/signin
+
+# Dashboard principal:
+https://seu-app.vercel.app
+```
+
+### **🔧 Troubleshooting Deploy**
+
+#### **Erro: Can't reach database server**
+```bash
+# Verificar DATABASE_URL completa:
+postgresql://user:pass@hostname.aws.neon.tech/db?sslmode=require
+# ✅ Deve terminar com .aws.neon.tech
+# ❌ Não pode estar truncada em .aw:5432
+```
+
+#### **Erro: NextAuth configuration**
+```bash
+# Verificar NEXTAUTH_URL:
+NEXTAUTH_URL=https://moodle-dashboard.vercel.app
+# ✅ HTTPS obrigatório em produção
+# ✅ Sem trailing slash
+```
+
+#### **Erro: Build failed**
+```bash
+# Prisma client generation:
+npm run build
+# Se falhar, verificar schema.prisma
+# provider = "postgresql" para produção
+```
+
+### **🏗️ Outras Plataformas**
+
+#### **Railway**
+```bash
+railway login
+railway new
+railway add-database --postgresql
+railway deploy
+```
+
+#### **Netlify + Supabase**
+```bash
+# Build command: npm run build
+# Publish: .next
+# DATABASE_URL: postgresql://postgres:pass@supabase.co:5432/postgres
+```
+
+#### **DigitalOcean App Platform**
+```bash
+# App Spec:
+name: moodle-dashboard
+services:
+- name: web
+  source_dir: /
+  build_command: npm run build
+  run_command: npm start
+```
 
 ## 📊 Funcionalidades em Detalhes
 

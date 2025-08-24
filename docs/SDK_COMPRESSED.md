@@ -143,37 +143,71 @@ const autoUpdate = useAutoUpdate()
 
 8. Segurança e ambiente
 - Variáveis essenciais:
-  - DATABASE_URL (em dev: file:./dev.db)
+  - DATABASE_URL (dev: file:./dev.db | prod: postgresql://user:pass@host/db)
+  - NEXTAUTH_URL (prod: https://seu-app.vercel.app)
   - NEXTAUTH_SECRET
   - CRON_SECRET
   - NEXT_PUBLIC_YOUTUBE_API_KEY (publica, mas restringir por referrer)
 - Boas práticas:
   - Não comitar `.env.local`
-  - Em produção, usar Postgres/MySQL gerenciado e não SQLite local
+  - ✅ Produção: PostgreSQL (Neon.tech, Supabase, ou similar)
+  - ✅ Deploy: Vercel com auto-deploy via GitHub
   - Usar secret manager (Vercel/AWS/Azure) para segredos em produção
   - Rotacionar chaves e monitorar acesso
 - Nota: tokens públicos (NEXT_PUBLIC_*) são visíveis no cliente — evite colocar segredos neles
 
-9. Quick start (PowerShell + POSIX)
+9. Quick start (Local + Deploy)
 
-PowerShell (Windows):
-```powershell
-npm install
-copy .env.example .env.local
-# gerar secrets (se tiver openssl): openssl rand -base64 32
-npx prisma migrate dev
-npx prisma generate
-$env:NEXTAUTH_URL = "http://localhost:3001"; npm run dev
-```
-
-POSIX (macOS / Linux):
+**Desenvolvimento Local:**
 ```bash
+git clone https://github.com/Pagani83/moodle-dashboard.git
+cd moodle-dashboard
 npm install
 cp .env.example .env.local
-openssl rand -base64 32
-npx prisma migrate dev
+
+# Configurar .env.local:
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_URL=http://localhost:3002
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
+
+# Setup do banco:
 npx prisma generate
-NEXTAUTH_URL=http://localhost:3001 npm run dev
+npx prisma migrate dev
+npm run seed
+
+# Executar:
+npm run dev
+```
+
+**Deploy em Produção:**
+```bash
+# 1. Criar PostgreSQL no Neon.tech
+# 2. Configurar variáveis no Vercel:
+DATABASE_URL=postgresql://user:pass@host.aws.neon.tech/db?sslmode=require
+NEXTAUTH_URL=https://seu-app.vercel.app
+NEXTAUTH_SECRET=sua_chave_forte
+
+# 3. Deploy automático:
+git push origin main
+
+# 4. Usuários criados automaticamente:
+# admin@moodle.local / admin123 (ADMIN)
+# mmpagani@tjrs.jus.br / cjud@2233 (ADMIN)
+# marciacampos@tjrs.jus.br / cjud@dicaf (USER)
+```
+
+**Troubleshooting Deploy:**
+```bash
+# Erro: Can't reach database server
+# ✅ Verificar se DATABASE_URL termina com .aws.neon.tech
+# ❌ Não pode estar truncada em .aw:5432
+
+# Erro: Authentication failed
+# ✅ NEXTAUTH_URL deve ser HTTPS em produção
+# ✅ Aguardar 1-2min para variáveis terem efeito
+
+# Testar deploy:
+GET https://seu-app.vercel.app/api/debug/users
 ```
 
 10. Testes, lint e contribuição
