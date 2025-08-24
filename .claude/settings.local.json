@@ -25,7 +25,17 @@
       "Bash(PORT=3001 npm run dev)",
       "Bash(npx prisma:*)",
       "Bash(npm run build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:moodle-dashboard-kappa.vercel.app)",
+      "Bash(vercel inspect:*)",
+      "Bash(vercel:*)",
+      "Bash(timeout:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(curl:*)",
+      "Bash(npm run seed:*)",
+      "Bash(del nul)"
     ],
     "deny": [],
     "ask": []
