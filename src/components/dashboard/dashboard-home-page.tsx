@@ -92,7 +92,11 @@ export function DashboardHomePage() {
     const setupUsers = async () => {
       try {
         console.log('Attempting to setup users automatically...')
-        const response = await fetch('/api/setup-users', { method: 'POST' })
+        const response = await fetch('/api/simple-users', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'setup' })
+        })
         const data = await response.json()
         console.log('Setup users response:', data)
       } catch (error) {
