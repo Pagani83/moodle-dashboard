@@ -317,21 +317,19 @@ export function DashboardHomePage() {
             Relatório 134
           </button>
 
-          {/* Tab de usuários só para admin */}
-          {session?.user?.role === 'ADMIN' && (
-            <button
-              onClick={() => setActiveTab('usuarios')}
-              className="px-4 py-3 text-sm font-medium transition-colors"
-              style={{ 
-                backgroundColor: activeTab === 'usuarios' ? '#2563eb' : 'transparent',
-                color: activeTab === 'usuarios' 
-                  ? '#ffffff' 
-                  : (theme === 'light' ? '#475569' : '#cbd5e1')
-              }}
-            >
-              Usuários
-            </button>
-          )}
+          {/* TEMPORARY: Tab de usuários sempre visível para criação manual */}
+          <button
+            onClick={() => setActiveTab('usuarios')}
+            className="px-4 py-3 text-sm font-medium transition-colors"
+            style={{ 
+              backgroundColor: activeTab === 'usuarios' ? '#2563eb' : 'transparent',
+              color: activeTab === 'usuarios' 
+                ? '#ffffff' 
+                : (theme === 'light' ? '#475569' : '#cbd5e1')
+            }}
+          >
+            Usuários
+          </button>
 
           <button
             onClick={() => setActiveTab('config')}
