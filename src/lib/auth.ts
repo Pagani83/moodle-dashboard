@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import type { NextAuthConfig } from 'next-auth'
 import { prisma } from './prisma'
+import { initializeUsers, getUserByEmail } from './simple-users-storage'
 
 const config = {
   pages: {
@@ -63,21 +64,17 @@ const config = {
               }
             }
           } catch (dbError) {
-            console.log('🔄 Database unavailable, trying simple-users API fallback...')
+            console.log('🔄 Database unavailable, trying simple-users storage fallback...')
             
-            // Fallback to simple-users API
+            // Fallback to simple-users storage
             try {
-              const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3002'}/api/simple-users`)
-              if (response.ok) {
-                const data = await response.json()
-                const simpleUser = data.users?.find((u: any) => u.email === credentials.email)
-                if (simpleUser) {
-                  user = simpleUser
-                  console.log('✅ Using simple-users API for authentication')
-                }
+              await initializeUsers()
+              user = getUserByEmail(credentials.email as string)
+              if (user) {
+                console.log('✅ Using simple-users storage for authentication')
               }
-            } catch (apiError) {
-              console.log('❌ Both database and simple-users API failed')
+            } catch (storageError) {
+              console.log('❌ Both database and simple-users storage failed')
             }
           }
 

@@ -1,73 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-
-// In-memory storage for users (temporary solution for production)
-let users: any[] = []
+import { initializeUsers, getUsers, getUserByEmail, addUser, updateUser } from '@/lib/simple-users-storage'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
     if (body.action === 'setup') {
-      // Create default users if empty
-      if (users.length === 0) {
-        const defaultUsers = [
-          { 
-            email: 'admin@moodle.local', 
-            name: 'Administrator', 
-            password: 'admin123', 
-            role: 'ADMIN' 
-          },
-          { 
-            email: 'mmpagani@tjrs.jus.br', 
-            name: 'Maikon Pagani', 
-            password: 'cjud@2233', 
-            role: 'ADMIN' 
-          },
-          { 
-            email: 'marciacampos@tjrs.jus.br', 
-            name: 'Marcia Campos', 
-            password: 'cjud@dicaf', 
-            role: 'USER' 
-          }
-        ]
-
-        for (const userData of defaultUsers) {
-          const hashedPassword = await bcrypt.hash(userData.password, 12)
-          
-          const user = {
-            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            email: userData.email,
-            name: userData.name,
-            password: hashedPassword,
-            role: userData.role,
-            active: true,
-            createdAt: new Date().toISOString(),
-            lastLogin: null
-          }
-          
-          users.push(user)
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: `Successfully created ${users.length} users`,
-          users: users.map(u => ({ ...u, password: undefined }))
-        })
-      } else {
-        return NextResponse.json({
-          message: 'Users already exist',
-          userCount: users.length,
-          users: users.map(u => ({ ...u, password: undefined }))
-        })
-      }
+      const users = await initializeUsers()
+      return NextResponse.json({
+        success: true,
+        message: `Successfully initialized ${users.length} users`,
+        users: users.map(u => ({ ...u, password: undefined }))
+      })
     }
 
     if (body.action === 'create') {
       const { email, name, password, role } = body
       
       // Check if user already exists
-      const existingUser = users.find(u => u.email === email)
+      const existingUser = getUserByEmail(email)
       if (existingUser) {
         return NextResponse.json({ error: 'User already exists' }, { status: 409 })
       }
@@ -85,7 +37,7 @@ export async function POST(request: NextRequest) {
         lastLogin: null
       }
       
-      users.push(newUser)
+      addUser(newUser)
 
       return NextResponse.json({
         success: true,
@@ -97,29 +49,28 @@ export async function POST(request: NextRequest) {
     if (body.action === 'update') {
       const { id, name, role, active, password } = body
       
-      const userIndex = users.findIndex(u => u.id === id)
-      if (userIndex === -1) {
+      const currentUsers = getUsers()
+      const existingUser = currentUsers.find(u => u.id === id)
+      if (!existingUser) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
 
       const updates: any = {
-        name: name || users[userIndex].name,
-        role: role || users[userIndex].role,
-        active: active !== undefined ? active : users[userIndex].active,
+        name: name || existingUser.name,
+        role: role || existingUser.role,
+        active: active !== undefined ? active : existingUser.active,
         updatedAt: new Date().toISOString()
       }
 
       if (password) {
         updates.password = await bcrypt.hash(password, 12)
-      } else {
-        updates.password = users[userIndex].password
       }
 
-      users[userIndex] = { ...users[userIndex], ...updates }
+      const updatedUser = updateUser(id, updates)
 
       return NextResponse.json({
         success: true,
-        user: { ...users[userIndex], password: undefined },
+        user: { ...updatedUser, password: undefined },
         message: 'User updated successfully'
       })
     }
@@ -137,6 +88,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    const users = getUsers()
     return NextResponse.json({
       userCount: users.length,
       users: users.map(u => ({ ...u, password: undefined }))
