@@ -87,24 +87,6 @@ export function DashboardHomePage() {
   const { config, filters } = useMoodleStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'acompanhamentos' | 'report134' | 'usuarios' | 'config'>('dashboard');
 
-  // TEMPORARY: Auto-setup users on component mount
-  useEffect(() => {
-    const setupUsers = async () => {
-      try {
-        console.log('Attempting to setup users automatically...')
-        const response = await fetch('/api/simple-users', { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setup' })
-        })
-        const data = await response.json()
-        console.log('Setup users response:', data)
-      } catch (error) {
-        console.log('Auto-setup failed (expected with Vercel protection):', error)
-      }
-    }
-    setupUsers()
-  }, [])
 
   // Hook para buscar dados do cache local com fallback para arquivos de storage
   const report134Cache = useCachedReport134();
@@ -336,19 +318,21 @@ export function DashboardHomePage() {
             Relatório 134
           </button>
 
-          {/* TEMPORARY: Tab de usuários sempre visível para criação manual */}
-          <button
-            onClick={() => setActiveTab('usuarios')}
-            className="px-4 py-3 text-sm font-medium transition-colors"
-            style={{ 
-              backgroundColor: activeTab === 'usuarios' ? '#2563eb' : 'transparent',
-              color: activeTab === 'usuarios' 
-                ? '#ffffff' 
-                : (theme === 'light' ? '#475569' : '#cbd5e1')
-            }}
-          >
-            Usuários
-          </button>
+          {/* Tab de usuários só para admin */}
+          {session?.user?.role === 'ADMIN' && (
+            <button
+              onClick={() => setActiveTab('usuarios')}
+              className="px-4 py-3 text-sm font-medium transition-colors"
+              style={{ 
+                backgroundColor: activeTab === 'usuarios' ? '#2563eb' : 'transparent',
+                color: activeTab === 'usuarios' 
+                  ? '#ffffff' 
+                  : (theme === 'light' ? '#475569' : '#cbd5e1')
+              }}
+            >
+              Usuários
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('config')}

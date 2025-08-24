@@ -34,16 +34,10 @@ export function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      // Try simple-users API first (for production without database)
-      let response = await fetch('/api/simple-users')
-      if (!response.ok) {
-        // Fallback to regular users API
-        response = await fetch('/api/users')
-      }
-      
+      const response = await fetch('/api/users')
       if (response.ok) {
         const data = await response.json()
-        setUsers(data.users || [])
+        setUsers(data.users)
       }
     } catch (error) {
       console.error('Error fetching users:', error)
@@ -54,21 +48,11 @@ export function UserManagement() {
 
   const createUser = async (userData: CreateUserData) => {
     try {
-      // Try simple-users API first (for production without database)
-      let response = await fetch('/api/simple-users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', ...userData })
+        body: JSON.stringify(userData)
       })
-      
-      if (!response.ok) {
-        // Fallback to regular users API
-        response = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userData)
-        })
-      }
       
       if (response.ok) {
         const data = await response.json()
