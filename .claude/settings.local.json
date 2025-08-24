@@ -36,7 +36,10 @@
       "Bash(curl:*)",
       "Bash(npm run seed:*)",
       "Bash(del nul)",
-      "Bash(npm update:*)"
+      "Bash(npm update:*)",
+      "Bash(sqlite3:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
