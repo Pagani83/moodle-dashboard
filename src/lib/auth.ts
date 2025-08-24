@@ -20,9 +20,46 @@ const config = {
             return null
           }
 
-          const user = await prisma.user.findUnique({
+          // Primeiro, tentar encontrar o usuário
+          let user = await prisma.user.findUnique({
             where: { email: credentials.email as string }
           })
+
+          // Se não encontrar usuário, verificar se o banco está vazio e inicializar
+          if (!user) {
+            const userCount = await prisma.user.count()
+            if (userCount === 0) {
+              console.log('🔧 No users found, initializing database...')
+              
+              // Criar usuários padrão
+              const defaultUsers = [
+                { email: 'admin@moodle.local', name: 'Administrator', password: 'admin123', role: 'ADMIN' },
+                { email: 'mmpagani@tjrs.jus.br', name: 'Maikon Pagani', password: 'cjud@2233', role: 'ADMIN' },
+                { email: 'marciacampos@tjrs.jus.br', name: 'Marcia Campos', password: 'cjud@dicaf', role: 'USER' }
+              ]
+              
+              for (const userData of defaultUsers) {
+                const hashedPassword = await bcrypt.hash(userData.password, 12)
+                await prisma.user.create({
+                  data: {
+                    email: userData.email,
+                    name: userData.name,
+                    password: hashedPassword,
+                    role: userData.role as 'ADMIN' | 'USER',
+                    active: true,
+                    emailVerified: new Date()
+                  }
+                })
+              }
+              
+              console.log('✅ Default users created')
+              
+              // Tentar encontrar o usuário novamente
+              user = await prisma.user.findUnique({
+                where: { email: credentials.email as string }
+              })
+            }
+          }
 
           if (!user || !user.active) {
             return null
