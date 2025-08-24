@@ -94,6 +94,36 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    if (body.action === 'update') {
+      const { id, name, role, active, password } = body
+      
+      const userIndex = users.findIndex(u => u.id === id)
+      if (userIndex === -1) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      const updates: any = {
+        name: name || users[userIndex].name,
+        role: role || users[userIndex].role,
+        active: active !== undefined ? active : users[userIndex].active,
+        updatedAt: new Date().toISOString()
+      }
+
+      if (password) {
+        updates.password = await bcrypt.hash(password, 12)
+      } else {
+        updates.password = users[userIndex].password
+      }
+
+      users[userIndex] = { ...users[userIndex], ...updates }
+
+      return NextResponse.json({
+        success: true,
+        user: { ...users[userIndex], password: undefined },
+        message: 'User updated successfully'
+      })
+    }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
   } catch (error) {
