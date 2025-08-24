@@ -70,21 +70,11 @@ export function UserManagement() {
 
   const updateUser = async (id: string, updates: Partial<UserData>) => {
     try {
-      // Try simple-users API first (for production without database)
-      let response = await fetch('/api/simple-users', {
-        method: 'POST',
+      const response = await fetch('/api/users', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', id, ...updates })
+        body: JSON.stringify({ id, ...updates })
       })
-      
-      if (!response.ok) {
-        // Fallback to regular users API
-        response = await fetch('/api/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, ...updates })
-        })
-      }
       
       if (response.ok) {
         const data = await response.json()
@@ -313,12 +303,7 @@ function UserFormModal({ user, onClose, onSave }: UserFormModalProps) {
       lastLogin: user?.lastLogin
     }
 
-    // Include password for new users (required) or when editing and password is provided
-    if (!user) {
-      // New user - password required
-      userData.password = password
-    } else if (password.trim()) {
-      // Existing user - password optional (only when provided)
+    if (!user && password) {
       userData.password = password
     }
 
@@ -376,8 +361,8 @@ function UserFormModal({ user, onClose, onSave }: UserFormModalProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10 transition-colors"
-                  required={!user} // Only required for new users
-                  placeholder={user ? "Deixe vazio para manter a senha atual" : "Digite uma senha segura"}
+                  required
+                  placeholder="Digite uma senha segura"
                   autoComplete="new-password"
                 />
                 <button

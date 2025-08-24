@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   useMoodleClient, 
   useMoodleStatus, 
@@ -86,7 +86,6 @@ export function DashboardHomePage() {
   const [modalAcompanhamento, setModalAcompanhamento] = useState<Acompanhamento | null>(null);
   const { config, filters } = useMoodleStore();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'acompanhamentos' | 'report134' | 'usuarios' | 'config'>('dashboard');
-
 
   // Hook para buscar dados do cache local com fallback para arquivos de storage
   const report134Cache = useCachedReport134();

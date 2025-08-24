@@ -40,7 +40,9 @@
       "Bash(sqlite3:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
