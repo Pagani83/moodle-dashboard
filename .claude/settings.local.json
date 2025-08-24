@@ -39,7 +39,8 @@
       "Bash(npm update:*)",
       "Bash(sqlite3:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
