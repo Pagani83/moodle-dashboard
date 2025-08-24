@@ -20,43 +20,64 @@ const config = {
             return null
           }
 
-          // Primeiro, tentar encontrar o usuário
-          let user = await prisma.user.findUnique({
-            where: { email: credentials.email as string }
-          })
+          let user: any = null
 
-          // Se não encontrar usuário, verificar se o banco está vazio e inicializar
-          if (!user) {
-            const userCount = await prisma.user.count()
-            if (userCount === 0) {
-              console.log('🔧 No users found, initializing database...')
-              
-              // Criar usuários padrão
-              const defaultUsers = [
-                { email: 'admin@moodle.local', name: 'Administrator', password: 'admin123', role: 'ADMIN' },
-                { email: 'mmpagani@tjrs.jus.br', name: 'Maikon Pagani', password: 'cjud@2233', role: 'ADMIN' },
-                { email: 'marciacampos@tjrs.jus.br', name: 'Marcia Campos', password: 'cjud@dicaf', role: 'USER' }
-              ]
-              
-              for (const userData of defaultUsers) {
-                const hashedPassword = await bcrypt.hash(userData.password, 12)
-                await prisma.user.create({
-                  data: {
-                    email: userData.email,
-                    name: userData.name,
-                    password: hashedPassword,
-                    role: userData.role as 'ADMIN' | 'USER',
-                    active: true,
-                  }
+          // Try database first
+          try {
+            user = await prisma.user.findUnique({
+              where: { email: credentials.email as string }
+            })
+
+            // Se não encontrar usuário, verificar se o banco está vazio e inicializar
+            if (!user) {
+              const userCount = await prisma.user.count()
+              if (userCount === 0) {
+                console.log('🔧 No users found, initializing database...')
+                
+                // Criar usuários padrão
+                const defaultUsers = [
+                  { email: 'admin@moodle.local', name: 'Administrator', password: 'admin123', role: 'ADMIN' },
+                  { email: 'mmpagani@tjrs.jus.br', name: 'Maikon Pagani', password: 'cjud@2233', role: 'ADMIN' },
+                  { email: 'marciacampos@tjrs.jus.br', name: 'Marcia Campos', password: 'cjud@dicaf', role: 'USER' }
+                ]
+                
+                for (const userData of defaultUsers) {
+                  const hashedPassword = await bcrypt.hash(userData.password, 12)
+                  await prisma.user.create({
+                    data: {
+                      email: userData.email,
+                      name: userData.name,
+                      password: hashedPassword,
+                      role: userData.role as 'ADMIN' | 'USER',
+                      active: true,
+                    }
+                  })
+                }
+                
+                console.log('✅ Default users created')
+                
+                // Tentar encontrar o usuário novamente
+                user = await prisma.user.findUnique({
+                  where: { email: credentials.email as string }
                 })
               }
-              
-              console.log('✅ Default users created')
-              
-              // Tentar encontrar o usuário novamente
-              user = await prisma.user.findUnique({
-                where: { email: credentials.email as string }
-              })
+            }
+          } catch (dbError) {
+            console.log('🔄 Database unavailable, trying simple-users API fallback...')
+            
+            // Fallback to simple-users API
+            try {
+              const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3002'}/api/simple-users`)
+              if (response.ok) {
+                const data = await response.json()
+                const simpleUser = data.users?.find((u: any) => u.email === credentials.email)
+                if (simpleUser) {
+                  user = simpleUser
+                  console.log('✅ Using simple-users API for authentication')
+                }
+              }
+            } catch (apiError) {
+              console.log('❌ Both database and simple-users API failed')
             }
           }
 
