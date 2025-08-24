@@ -4,10 +4,65 @@ import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar se é uma requisição de criação do admin
+    // Primeiro, verificar se existem usuários no banco
+    const userCount = await prisma.user.count()
+    
+    // Se não existem usuários, criar os usuários padrão automaticamente
+    if (userCount === 0) {
+      console.log('🔧 No users found, creating default users...')
+      
+      // Criar usuário admin padrão
+      const adminHash = await bcrypt.hash('admin123', 12)
+      await prisma.user.create({
+        data: {
+          email: 'admin@moodle.local',
+          name: 'Administrator', 
+          password: adminHash,
+          role: 'ADMIN',
+          active: true,
+          emailVerified: new Date()
+        }
+      })
+      
+      // Criar seu usuário admin
+      const yourHash = await bcrypt.hash('cjud@2233', 12)
+      await prisma.user.create({
+        data: {
+          email: 'mmpagani@tjrs.jus.br',
+          name: 'Maikon Pagani',
+          password: yourHash,
+          role: 'ADMIN', 
+          active: true,
+          emailVerified: new Date()
+        }
+      })
+      
+      // Criar usuário Márcia
+      const marciaHash = await bcrypt.hash('cjud@dicaf', 12)
+      await prisma.user.create({
+        data: {
+          email: 'marciacampos@tjrs.jus.br',
+          name: 'Marcia Campos',
+          password: marciaHash,
+          role: 'USER',
+          active: true, 
+          emailVerified: new Date()
+        }
+      })
+      
+      return NextResponse.json({
+        message: 'Default users created successfully',
+        users: [
+          { email: 'admin@moodle.local', role: 'ADMIN' },
+          { email: 'mmpagani@tjrs.jus.br', role: 'ADMIN' },
+          { email: 'marciacampos@tjrs.jus.br', role: 'USER' }
+        ]
+      })
+    }
+    
+    // Se já existem usuários, verificar o secret para criação manual
     const { email, password, name, secret } = await request.json()
     
-    // Verificação de segurança simples (você pode remover este endpoint depois)
     if (secret !== 'create-admin-2025') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
