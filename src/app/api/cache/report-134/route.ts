@@ -122,13 +122,58 @@ export async function POST(req: NextRequest) {
         // Por exemplo, usando o MoodleClient diretamente ou chamando outro endpoint
         const startTime = Date.now();
         
-        // Simular busca de dados frescos (você pode substituir por chamada real ao Moodle)
-        // const moodleResponse = await fetch('/api/moodle/report-134');
-        // const freshData = await moodleResponse.json();
+        // Buscar dados frescos do Moodle via API
+        console.log('📡 Fetching fresh data from Moodle...');
+        const moodleResponse = await fetch('/api/moodle/report-134', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
         
-        // Por enquanto, retornamos sucesso indicando que o refresh foi triggerado
-        fetchDuration = Date.now() - startTime;
-        lastFetch = new Date().toISOString();
+        if (!moodleResponse.ok) {
+          throw new Error(`Moodle API failed: ${moodleResponse.status} ${moodleResponse.statusText}`);
+        }
+        
+        const freshData = await moodleResponse.json();
+        console.log(`✅ Fresh data fetched: ${freshData.length} records`);
+        
+        // Criar arquivo Excel com dados frescos
+        if (Array.isArray(freshData) && freshData.length > 0) {
+          const ExcelJS = (await import('exceljs')).default;
+          const wb = new ExcelJS.Workbook();
+          const metaSheet = wb.addWorksheet('meta');
+          
+          fetchDuration = Date.now() - startTime;
+          lastFetch = new Date().toISOString();
+          
+          metaSheet.addRow(['lastFetch', lastFetch]);
+          metaSheet.addRow(['fetchDuration', fetchDuration]);
+          metaSheet.addRow(['totalRows', freshData.length]);
+
+          const dataSheet = wb.addWorksheet('data');
+          const headers = Object.keys(freshData[0]);
+          dataSheet.addRow(headers);
+          for (const row of freshData) {
+            dataSheet.addRow(headers.map((h) => row[h] ?? null));
+          }
+
+          const filename = `report134_${getTimestamp()}.xlsx`;
+          const fullPath = path.join(STORAGE_DIR, filename);
+          await wb.xlsx.writeFile(fullPath);
+
+          // Manter apenas os últimos 7 arquivos
+          const files = await listFiles();
+          const excess = files.slice(7);
+          await Promise.all(excess.map(f => fs.unlink(path.join(STORAGE_DIR, f.name)).catch(() => {})));
+          
+          console.log(`💾 Fresh data saved to: ${filename}`);
+        } else {
+          fetchDuration = Date.now() - startTime;
+          lastFetch = new Date().toISOString();
+          console.log('⚠️ No fresh data received from Moodle');
+        }
         
         // Criar um arquivo temporário com timestamp universal para indicar atualização
         const tempTimestamp = getTimestamp();

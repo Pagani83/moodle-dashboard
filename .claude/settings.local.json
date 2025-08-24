@@ -45,7 +45,8 @@
       "Bash(git rm:*)",
       "WebFetch(domain:moodle-dashboard-a6aoepf55-pagani83s-projects.vercel.app)",
       "WebFetch(domain:moodle-dashboard-p9a4i2cnk-pagani83s-projects.vercel.app)",
-      "WebFetch(domain:moodle-dashboard.vercel.app)"
+      "WebFetch(domain:moodle-dashboard.vercel.app)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
