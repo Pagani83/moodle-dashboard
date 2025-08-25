@@ -31,8 +31,8 @@ export class MoodleClient {
   private maskToken(text: string): string {
     // Mask both wstoken= and token= occurrences in URLs or bodies
     const masked = text
-      .replace(/wstoken=[^&]+/g, `wstoken=${this.config.token.substring(0, 8)}...***`)
-      .replace(/token=[^&]+/g, `token=${this.config.token.substring(0, 8)}...***`);
+  .replace(/wstoken=[^&]+/g, `wstoken=${this.config.token ? String(this.config.token).substring(0, 8) + '...***' : '***'}`)
+  .replace(/token=[^&]+/g, `token=${this.config.token ? String(this.config.token).substring(0, 8) + '...***' : '***'}`);
     return masked;
   }
 
@@ -535,6 +535,50 @@ export class MoodleClient {
 
     } catch (error) {
       console.error('❌ Error fetching Dashboard Master CJUD:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // RELATÓRIO 151 - SEGUNDA PARTE DO RELATÓRIO PRINCIPAL
+  // ============================================================================
+
+  async getReport151(
+    category: number = 22,
+    startDate?: string,
+    endDate?: string,
+    sampleOnly: boolean = false
+  ): Promise<any[]> {
+    console.log(`🎯 Fetching Report 151${sampleOnly ? ' (sample)' : ' (full)'}...`);
+    
+    const filters: Record<string, any> = {
+      courseid: 1, // Baseado no link fornecido
+    };
+
+    try {
+      const response = await this.runConfigurableReport(151, filters);
+      
+      if (!response.data) {
+        console.warn('⚠️ No data returned from Report 151');
+        return [];
+      }
+
+      let parsedData: any[];
+      try {
+        parsedData = typeof response.data === 'string' 
+          ? JSON.parse(response.data) 
+          : response.data;
+      } catch (parseError) {
+        console.error('❌ Failed to parse Report 151 data:', parseError);
+        return [];
+      }
+
+      console.log(`✅ Report 151${sampleOnly ? ' sample' : ' full'}: ${parsedData.length} records loaded`);
+      
+      return parsedData;
+
+    } catch (error) {
+      console.error('❌ Error fetching Report 151:', error);
       throw error;
     }
   }

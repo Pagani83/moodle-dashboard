@@ -764,7 +764,7 @@ function ComparisonWidget({ data, courses, onRemove }: ComparisonWidgetProps) {
       const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
       
       return {
-        nome: course.nome?.substring(0, 20) + '...' || `Curso ${courseId}`,
+  nome: (course.nome ? String(course.nome).substring(0, 20) + '...' : `Curso ${courseId}`),
         total,
         concluidos: completed,
         taxa: rate

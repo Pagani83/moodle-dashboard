@@ -170,14 +170,27 @@ export async function POST(request: NextRequest) {
     console.log('📝 POST - Received data:', JSON.stringify(acompanhamento, null, 2))
     
     // Validate required fields
-    if (!acompanhamento.nome) {
-      console.log('❌ POST - Missing nome field')
-      return NextResponse.json({ error: 'Nome is required' }, { status: 400 })
+    if (!acompanhamento.nome || typeof acompanhamento.nome !== 'string') {
+      console.log('❌ POST - Missing or invalid nome field:', acompanhamento.nome)
+      return NextResponse.json({ error: 'Nome is required and must be a string' }, { status: 400 })
     }
     
     if (!acompanhamento.cursos || !Array.isArray(acompanhamento.cursos) || acompanhamento.cursos.length === 0) {
-      console.log('❌ POST - Missing or empty cursos array')
+      console.log('❌ POST - Missing or empty cursos array:', acompanhamento.cursos)
       return NextResponse.json({ error: 'At least one curso is required' }, { status: 400 })
+    }
+    
+    // Validate curso structure
+    for (let i = 0; i < acompanhamento.cursos.length; i++) {
+      const curso = acompanhamento.cursos[i]
+      if (!curso.courseid) {
+        console.log(`❌ POST - Missing courseid in curso ${i}:`, curso)
+        return NextResponse.json({ error: `Curso ${i + 1} is missing courseid` }, { status: 400 })
+      }
+      if (!curso.nome || typeof curso.nome !== 'string') {
+        console.log(`❌ POST - Missing or invalid nome in curso ${i}:`, curso)
+        return NextResponse.json({ error: `Curso ${i + 1} is missing or has invalid name` }, { status: 400 })
+      }
     }
     
     console.log('🔍 POST - Validation passed, creating acompanhamento...')
@@ -193,20 +206,27 @@ export async function POST(request: NextRequest) {
       cursos: {
         create: acompanhamento.cursos.map((curso: any) => {
           console.log('🔍 POST - Processing curso:', curso.nome)
-          return {
+          const cursoData = {
             courseId: String(curso.courseid),
             courseName: curso.nome,
             shortName: curso.shortname || '',
             fullName: curso.fullname || curso.nome,
             ativo: curso.ativo ?? true,
-            status: 'CURSANDO',
-            progress: 0,
+            status: 'CURSANDO' as const,
+            progress: 0.0,
           }
+          console.log('📝 POST - Curso data:', JSON.stringify(cursoData, null, 2))
+          return cursoData
         })
       }
     }
     
     console.log('📝 POST - Create data:', JSON.stringify(createData, null, 2))
+    
+    // Test database connection first
+    console.log('🔗 Testing database connection...')
+    await prisma.$queryRaw`SELECT 1 as test`
+    console.log('✅ Database connection test passed')
     
     const dbAcompanhamento = await prisma.acompanhamento.create({
       data: createData,
@@ -258,7 +278,10 @@ export async function POST(request: NextRequest) {
     console.error('❌ POST - Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : 'Unknown'
+      name: error instanceof Error ? error.name : 'Unknown',
+      code: (error as any)?.code,
+      meta: (error as any)?.meta,
+      clientVersion: (error as any)?.clientVersion
     })
     
     // Handle unique constraint violation
@@ -271,7 +294,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       error: 'Internal Server Error',
       details: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      code: (error as any)?.code,
+      meta: (error as any)?.meta
     }, { status: 500 })
   } finally {
     await prisma.$disconnect()

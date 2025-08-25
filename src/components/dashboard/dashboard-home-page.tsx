@@ -2,69 +2,32 @@
 
 import React, { useState } from 'react';
 import { 
-  useMoodleClient, 
   useMoodleStatus, 
   useSafeMoodleClient 
 } from '@/providers/moodle-provider';
-import { 
-  useDashboardMasterCJUD,
-  useCourseSummaries,
-  useTestConnection,
-  useCacheStats 
-} from '@/hooks/use-moodle';
-import {
-  useReport134Sample,
-  useReport134Full,
-  useReport134Status,
-  useForceReport134Update,
-  useTestReport134Access,
-  useTestReport134,
-  useRunReport, // Importar o novo hook
-  useRestoreReport134FromFile,
-  REPORT_134_CONFIG
-} from '@/hooks/use-report-134';
+import { useCombinedReport } from '@/hooks/useCombinedReport';
 import { UserMenu } from '@/components/auth/user-menu';
 import { UserManagement } from '@/components/admin/user-management';
 import { useSession } from 'next-auth/react';
 import { useMoodleStore } from '@/store/moodle-store';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  Settings, 
-  Database, 
-  Activity, 
-  Users, 
   BookOpen,
-  TrendingUp,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  FileText,
-  Eye,
-  Download,
-  Calendar,
-  BarChart3
 } from 'lucide-react';
-import AcompanhamentosView from './acompanhamentos-view';
 import { AcompanhamentosGrid } from './acompanhamentos-grid';
 import { AcompanhamentoDetailModal } from './acompanhamento-detail-modal';
-import { YouTubeWidget } from '../youtube/youtube-widget';
 import { useAcompanhamentosSync } from '@/hooks/use-acompanhamentos';
-import { clearLocalAcompanhamentos } from '@/utils/clear-local-acompanhamentos';
 import type { Acompanhamento } from '@/types/moodle';
 
 // Componentes extraídos
 import {
-  useCachedReport134,
   extractUniqueCoursesFromReport,
-  StatusCard,
   ConfigurationNeededView,
   ConfigurationView,
-  TestConnectionView,
   DashboardContent,
-  Report134View,
   CreateAcompanhamentoModal
 } from './index';
+import { SourceReportsView } from './views/SourceReportsView';
 
 export function DashboardHomePage() {
   const { isConfigured, needsConfiguration } = useMoodleStatus();
@@ -73,31 +36,20 @@ export function DashboardHomePage() {
   const { theme, setTheme } = useMoodleStore();
   const client = useSafeMoodleClient();
   
-  // Limpar acompanhamentos locais obsoletos
-  React.useEffect(() => {
-    clearLocalAcompanhamentos();
-  }, []);
-  
-  // Use API sync hook for persistent storage
   const { createAcompanhamento, updateAcompanhamento, deleteAcompanhamento } = useAcompanhamentosSync();
   
-  // Estado do modal de detalhamento
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAcompanhamento, setModalAcompanhamento] = useState<Acompanhamento | null>(null);
-  const { config, filters } = useMoodleStore();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'acompanhamentos' | 'report134' | 'usuarios' | 'config'>('dashboard');
+  const { config } = useMoodleStore();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'acompanhamentos' | 'sources' | 'usuarios' | 'config'>('dashboard');
 
-  // Hook para buscar dados do cache local com fallback para arquivos de storage
-  const report134Cache = useCachedReport134();
-  console.log('Dashboard - report134Cache.error:', report134Cache.error);
+  const combinedReport = useCombinedReport();
 
-  // Estado para modal de criação/edição
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingAcompanhamento, setEditingAcompanhamento] = useState<Acompanhamento | null>(null);
 
-  // Funções para gerenciar acompanhamentos
   const handleCreateNew = () => {
-    setEditingAcompanhamento(null); // Garantir que não está em modo de edição
+    setEditingAcompanhamento(null);
     setCreateModalOpen(true);
   };
 
@@ -113,11 +65,9 @@ export function DashboardHomePage() {
       };
 
       if (editingAcompanhamento) {
-        // Editando acompanhamento existente
         await updateAcompanhamento({ id: editingAcompanhamento.id, ...base });
         setEditingAcompanhamento(null);
       } else {
-        // Criando novo acompanhamento
         await createAcompanhamento(base);
       }
       setCreateModalOpen(false);
@@ -143,39 +93,14 @@ export function DashboardHomePage() {
     }
   };
 
-  // Hooks para dados específicos usando cache baseado no arquivo
-  const masterData = useDashboardMasterCJUD(
-    client!,
-    filters.category || 22,
-    filters.startDate,
-    filters.endDate,
-    false // DESATIVADO - focar apenas no Relatório 134
-  );
-
-  const summaries = useCourseSummaries(
-    client!,
-    filters.category || 22,
-    false // DESATIVADO - focar apenas no Relatório 134
-  );
-
-  const testMutation = useTestConnection(client!);
-  const cacheStats = useCacheStats(client!, false); // DESATIVADO
-  const runReportMutation = useRunReport(client!);
-  
-  // Hooks para Report 134 que reaproveita o cache já carregado
-  const status = useReport134Status(client!);
-  const forceUpdate = useForceReport134Update(client!);
-
   const queryClient = useQueryClient();
 
-  // Configuração precisa ser feita?
   if (needsConfiguration) {
     return <ConfigurationNeededView />;
   }
 
   return (
     <div className="min-h-screen transition-colors" style={{ background: 'var(--background)' }}>
-      {/* Header que alterna entre temas com bom contraste */}
       <header 
         className="shadow-lg"
         style={{ 
@@ -198,10 +123,9 @@ export function DashboardHomePage() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Status dinâmico de conexão e cache */}
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1">
-                {report134Cache.isLoading ? (
+                {combinedReport.isFetching || combinedReport.isLoading ? (
                   <>
                     <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></div>
                     <span 
@@ -211,7 +135,7 @@ export function DashboardHomePage() {
                       Carregando cache...
                     </span>
                   </>
-                ) : report134Cache.error ? (
+                ) : combinedReport.isError ? (
                   <>
                     <div className="h-2 w-2 bg-red-500 rounded-full"></div>
                     <span 
@@ -221,14 +145,14 @@ export function DashboardHomePage() {
                       Erro no cache
                     </span>
                   </>
-                ) : report134Cache.data?.data && report134Cache.data.data.length > 0 ? (
+                ) : combinedReport.data?.data && combinedReport.data.data.length > 0 ? (
                   <>
                     <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                     <span 
                       className="text-xs"
                       style={{ color: theme === 'light' ? '#22c55e' : '#4ade80' }}
                     >
-                      Cache ativo ({report134Cache.data.data.length} registros)
+                      Cache ativo ({combinedReport.data.totalRecords} registros)
                     </span>
                   </>
                 ) : (
@@ -245,7 +169,6 @@ export function DashboardHomePage() {
               </div>
               <button
                 onClick={() => {
-                  console.log('🔄 Alternando tema de', theme, 'para', theme === 'dark' ? 'light' : 'dark');
                   setTheme(theme === 'dark' ? 'light' : 'dark');
                 }}
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105"
@@ -265,12 +188,10 @@ export function DashboardHomePage() {
               </button>
             </div>
             
-            {/* Menu do usuário */}
             <UserMenu />
           </div>
         </div>
 
-        {/* Navegação por abas - estilo original */}
         <nav 
           className="flex space-x-0 px-6"
           style={{ 
@@ -305,19 +226,18 @@ export function DashboardHomePage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('report134')}
+            onClick={() => setActiveTab('sources')}
             className="px-4 py-3 text-sm font-medium transition-colors"
             style={{ 
-              backgroundColor: activeTab === 'report134' ? '#2563eb' : 'transparent',
-              color: activeTab === 'report134' 
+              backgroundColor: activeTab === 'sources' ? '#2563eb' : 'transparent',
+              color: activeTab === 'sources' 
                 ? '#ffffff' 
                 : (theme === 'light' ? '#475569' : '#cbd5e1')
             }}
           >
-            Relatório 134
+            Fontes
           </button>
 
-          {/* Tab de usuários só para admin */}
           {session?.user?.role === 'ADMIN' && (
             <button
               onClick={() => setActiveTab('usuarios')}
@@ -348,23 +268,19 @@ export function DashboardHomePage() {
         </nav>
       </header>
 
-      {/* Conteúdo principal */}
       <main className="px-6 py-6">
         {activeTab === 'dashboard' && (
           <DashboardContent
-            masterData={masterData}
-            summaries={summaries}
-            cacheStats={cacheStats}
-            report134Cache={report134Cache}
+            masterData={{}}
+            summaries={{}}
+            cacheStats={{}}
+            report134Cache={{}}
+            combinedReport={combinedReport}
           />
         )}
 
-        {activeTab === 'report134' && (
-          <Report134View
-            status={status}
-            forceUpdate={forceUpdate}
-            report134Cache={report134Cache}
-          />
+        {activeTab === 'sources' && (
+          <SourceReportsView />
         )}
 
         {activeTab === 'acompanhamentos' && (
@@ -391,7 +307,6 @@ export function DashboardHomePage() {
               </button>
             </div>
             
-            {/* Grid de Cards de Acompanhamentos */}
             <AcompanhamentosGrid 
               onOpenDetailModal={(acompanhamento) => {
                 setModalAcompanhamento(acompanhamento);
@@ -400,7 +315,7 @@ export function DashboardHomePage() {
               onCreateNew={handleCreateNew}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              reportData={(report134Cache.data?.data as any[]) || []}
+              reportData={(combinedReport.data?.data as any[]) || []}
             />
           </div>
         )}
@@ -408,11 +323,6 @@ export function DashboardHomePage() {
         {activeTab === 'config' && (
           <div className="space-y-6">
             <ConfigurationView config={config} />
-            <TestConnectionView
-              testMutation={testMutation}
-              client={client}
-              runReportMutation={runReportMutation}
-            />
           </div>
         )}
         
@@ -423,15 +333,13 @@ export function DashboardHomePage() {
         )}
       </main>
       
-      {/* Modal de Detalhamento */}
       <AcompanhamentoDetailModal
         acompanhamento={modalAcompanhamento}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        reportData={(report134Cache.data?.data as any[]) || []}
+        reportData={(combinedReport.data?.data as any[]) || []}
       />
       
-      {/* Modal de Criação/Edição */}
       {createModalOpen && (
         <CreateAcompanhamentoModal 
           onClose={() => {
@@ -439,7 +347,7 @@ export function DashboardHomePage() {
             setEditingAcompanhamento(null);
           }} 
           onCreate={handleCreateAcompanhamento}
-          availableCourses={extractUniqueCoursesFromReport((report134Cache.data?.data as any[]) || [])}
+          availableCourses={extractUniqueCoursesFromReport((combinedReport.data?.data as any[]) || [])}
           editingData={editingAcompanhamento}
         />
       )}

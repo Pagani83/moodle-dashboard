@@ -1,0 +1,4 @@
+{
+    "data": "[\n    {\n        \"user_category\": \"Aluno F\",\n        \"user_count\": \"7751\"\n    },\n    {\n        \"user_category\": \"Aluno M\",\n        \"user_count\": \"4760\"\n    },\n    {\n        \"user_category\": \"N\u00e3o Informado\",\n        \"user_count\": \"2981\"\n    },\n    {\n        \"user_category\": \"Magistrado M\",\n        \"user_count\": \"439\"\n    },\n    {\n        \"user_category\": \"Magistrado F\",\n        \"user_count\": \"378\"\n    },\n    {\n        \"user_category\": \"Estagi\u00e1rio F\",\n        \"user_count\": \"12\"\n    },\n    {\n        \"user_category\": \"Estagi\u00e1rio M\",\n        \"user_count\": \"5\"\n    }\n]",
+    "warnings": ""
+}

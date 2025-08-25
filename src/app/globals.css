@@ -58,7 +58,6 @@ html.dark body {
   color: var(--foreground);
 }
 
-/* Transições suaves para elementos principais */
 * {
   transition-property: background-color, border-color, color;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -99,7 +98,6 @@ html.dark body {
   background: rgb(59 130 246 / 0.2);
 }
 
-/* Modernos componentes base */
 .glass-card {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px);
@@ -147,7 +145,6 @@ html.dark body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Layout moderno */
 .modern-header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);

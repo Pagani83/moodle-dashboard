@@ -2,8 +2,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AlertCircle, Trash2, Plus, Filter, Edit3 } from 'lucide-react';
-import { useMoodleStore } from '@/store/moodle-store';
-import { useReport134Full } from '@/hooks/use-report-134';
+import { useActiveAcompanhamentoId, useSetActiveAcompanhamentoId } from '@/hooks/use-active-acompanhamento';
+import { useCombinedReport } from '@/hooks/useCombinedReport';
 import { useSafeMoodleClient } from '@/providers/moodle-provider';
 import { useAcompanhamentosSync } from '@/hooks/use-acompanhamentos';
 import { useSession } from 'next-auth/react';
@@ -29,27 +29,13 @@ export default function AcompanhamentosView() {
   console.log('AcompanhamentosView - persistentAcompanhamentos:', persistentAcompanhamentos)
   console.log('AcompanhamentosView - isLoadingPersistent:', isLoadingPersistent)
 
-  // Zustand store para estado local/UI
-  const { 
-    acompanhamentos: localAcompanhamentos, 
-    setAcompanhamentoAtivo, 
-    acompanhamentoAtivo,
-    addAcompanhamento: addLocalAcompanhamento,
-    updateAcompanhamento: updateLocalAcompanhamento,
-    removeAcompanhamento: removeLocalAcompanhamento,
-    clearAllAcompanhamentos
-  } = useMoodleStore();
+
+  // Novo: acompanhamento ativo persistente
+  const { data: acompanhamentoAtivo, isLoading: isLoadingAtivo } = useActiveAcompanhamentoId();
+  const setAcompanhamentoAtivoMutation = useSetActiveAcompanhamentoId();
   
   const client = useSafeMoodleClient();
-  const report134 = useReport134Full(client!, false);
-
-  // Limpar dados locais na inicialização - usar apenas dados da API
-  useEffect(() => {
-    if (localAcompanhamentos.length > 0) {
-      console.log('🧹 Limpando acompanhamentos locais obsoletos:', localAcompanhamentos.length);
-      clearAllAcompanhamentos();
-    }
-  }, []); // Executar apenas uma vez na inicialização
+  const combinedReport = useCombinedReport();
 
   // Usar apenas dados persistentes da API
   const acompanhamentos = persistentAcompanhamentos;
@@ -66,7 +52,7 @@ export default function AcompanhamentosView() {
 
   // Derivar cursos a partir do cache do Relatório 134 (sem API)
   const allCourses = useMemo(() => {
-    const data = (report134.data?.data as any[]) || [];
+    const data = (combinedReport.data?.data as any[]) || [];
     const map = new Map<number, { id: number; fullname: string; shortname?: string }>();
     for (const r of data) {
       const id = Number(r.course_id);
@@ -75,7 +61,7 @@ export default function AcompanhamentosView() {
       }
     }
     return Array.from(map.values());
-  }, [report134.data]);
+  }, [combinedReport.data]);
 
   const filteredCourses = useMemo(() => {
     const q = courseSearch.trim().toLowerCase();
@@ -116,9 +102,7 @@ export default function AcompanhamentosView() {
         courseid: id,
         nome: c?.fullname || c?.shortname || String(id),
         ativo: true,
-        relatorios: [
-          { tipo: 'configurable_reports', ativo: true, params: { reportId: 134 } },
-        ],
+        relatorios: [],
       };
     });
 
@@ -152,7 +136,7 @@ export default function AcompanhamentosView() {
       await deleteAcompanhamento(id);
       // Se era o ativo, limpar seleção
       if (acompanhamentoAtivo === id) {
-        setAcompanhamentoAtivo(null);
+        await setAcompanhamentoAtivoMutation.mutateAsync(null);
       }
     } catch (error) {
       console.error('Erro ao excluir acompanhamento:', error);
@@ -162,9 +146,9 @@ export default function AcompanhamentosView() {
 
   // Filtrar dados do 134 por acompanhamento
   const filtered134 = useMemo(() => {
-    const src = (report134.data?.data as any[]) || [];
+    const src = (combinedReport.data?.data as any[]) || [];
     if (!activeAcomp || !src.length) return [] as any[];
-    const ids = new Set(activeAcomp.cursos.map(c => c.courseid));
+    const ids = new Set(activeAcomp.cursos.map((c: any) => c.courseid));
     const start = periodoIni ? new Date(periodoIni) : null;
     const end = periodoFim ? new Date(periodoFim) : null;
     return src.filter((r: any) => {
@@ -180,7 +164,7 @@ export default function AcompanhamentosView() {
       }
       return true;
     });
-  }, [report134.data, activeAcomp, periodoIni, periodoFim]);
+  }, [combinedReport.data, activeAcomp, periodoIni, periodoFim]);
 
   const resumo = useMemo(() => {
     const data = filtered134;
@@ -241,10 +225,10 @@ export default function AcompanhamentosView() {
                 />
               </div>
               <div className="max-h-56 overflow-y-auto border rounded">
-                {!report134.data && (
+                {!combinedReport.data && (
                   <div className="p-3 text-sm text-gray-500">Para listar cursos, carregue o cache do Relatório 134 na aba correspondente.</div>
                 )}
-                {report134.data && filteredCourses.map((c: any) => {
+                {combinedReport.data && filteredCourses.map((c: any) => {
                   const checked = selectedCourseIds.includes(c.id);
                   return (
                     <label key={c.id} className="flex items-center gap-2 px-3 py-2 border-b hover:bg-gray-50 cursor-pointer">
@@ -261,7 +245,7 @@ export default function AcompanhamentosView() {
                     </label>
                   );
                 })}
-                {report134.data && filteredCourses.length === 0 && (
+                {combinedReport.data && filteredCourses.length === 0 && (
                   <div className="p-3 text-sm text-gray-500">Nenhum curso encontrado</div>
                 )}
               </div>
@@ -298,7 +282,7 @@ export default function AcompanhamentosView() {
                   <p className="text-xs text-gray-600">{a.cursos.length} cursos • atualizado {new Date(a.atualizado_em).toLocaleString('pt-BR')}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { setAcompanhamentoAtivo(a.id); }} className="px-2 py-1 text-xs rounded border bg-white">Ativar</button>
+                  <button onClick={() => { setAcompanhamentoAtivoMutation.mutateAsync(a.id); }} className="px-2 py-1 text-xs rounded border bg-white">Ativar</button>
                   <button onClick={() => startEdit(a)} className="px-2 py-1 text-xs rounded border bg-white inline-flex items-center"><Edit3 className="h-3 w-3 mr-1"/>Editar</button>
                   <button onClick={() => handleRemoveAcompanhamento(a.id)} className="px-2 py-1 text-xs rounded border bg-white inline-flex items-center text-red-600"><Trash2 className="h-3 w-3 mr-1"/>Excluir</button>
                 </div>
@@ -316,17 +300,17 @@ export default function AcompanhamentosView() {
               <h4 className="text-lg font-bold text-gray-900">{activeAcomp.nome}</h4>
               <p className="text-sm text-gray-600">{activeAcomp.cursos.length} cursos selecionados</p>
             </div>
-    <div className="text-xs text-gray-500">Usando dados do cache do Relatório 134</div>
+    <div className="text-xs text-gray-500">Usando dados do cache combinado</div>
           </div>
 
-          {!report134.data && !report134.isFetching && (
+          {!combinedReport.data && !combinedReport.isFetching && (
             <div className="p-4 rounded border border-yellow-200 bg-yellow-50 text-yellow-800 text-sm flex items-center">
               <AlertCircle className="h-4 w-4 mr-2" />
-      Nenhum cache do Relatório 134 disponível. Acesse a aba "Relatório 134" para carregar/atualizar o cache.
+      Nenhum cache combinado disponível. Acesse a aba "Fontes" para carregar/atualizar o cache.
             </div>
           )}
 
-          {report134.data && (
+          {combinedReport.data && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <StatCard label="Registros" value={resumo.total} />
               <StatCard label="Cursos" value={resumo.cursosUnicos} />
@@ -335,7 +319,7 @@ export default function AcompanhamentosView() {
             </div>
           )}
 
-          {report134.data && (
+          {combinedReport.data && (
             <div className="overflow-x-auto border rounded">
               <table className="min-w-full text-xs">
                 <thead className="bg-gray-50">

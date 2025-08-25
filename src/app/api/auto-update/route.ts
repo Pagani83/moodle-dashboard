@@ -31,22 +31,42 @@ export async function GET(request: NextRequest) {
       try {
         console.log('🔄 Triggering Moodle data refresh...');
         
-        // Chamar a API que força uma nova busca de dados do Moodle
-        // (isso vai invalidar cache e buscar dados frescos)
+        // Forçar atualização do relatório combinado (134 + 151)
         const baseUrl = url.origin;
-        const refreshResponse = await fetch(`${baseUrl}/api/cache/report-134?force_refresh=true`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
         
-        if (refreshResponse.ok) {
-          dataRefreshResult = await refreshResponse.json();
-          console.log('✅ Moodle data refresh completed');
+        // Buscar dados frescos dos dois relatórios
+        const [report134Response, report151Response] = await Promise.all([
+          fetch(`${baseUrl}/api/moodle/report-134`, {
+            headers: { 'X-Force-Refresh': 'true' }
+          }),
+          fetch(`${baseUrl}/api/moodle/report-151`, {
+            headers: { 'X-Force-Refresh': 'true' }
+          })
+        ]);
+        
+        if (report134Response.ok && report151Response.ok) {
+          const data134 = await report134Response.json();
+          const data151 = await report151Response.json();
+          
+          // Salvar no cache combinado
+          const refreshResponse = await fetch(`${baseUrl}/api/cache/combined-report`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              data134: Array.isArray(data134) ? data134 : [],
+              data151: Array.isArray(data151) ? data151 : [],
+              lastFetch: new Date().toISOString(),
+              fetchDuration: 0,
+              report134Count: Array.isArray(data134) ? data134.length : 0,
+              report151Count: Array.isArray(data151) ? data151.length : 0,
+            })
+          });
+          
+          dataRefreshResult = refreshResponse.ok ? await refreshResponse.json() : { error: 'Cache save failed' };
         } else {
-          console.log('⚠️ Moodle data refresh failed, continuing anyway');
-          dataRefreshResult = { error: 'Failed to refresh Moodle data' };
+          dataRefreshResult = { error: 'Failed to fetch combined reports' };
         }
       } catch (error) {
         console.log('⚠️ Data refresh error:', error);

@@ -2,23 +2,26 @@
 
 import React, { useMemo, useState } from 'react';
 import { Settings, BookOpen, Database } from 'lucide-react';
-import { useMoodleStore } from '@/store/moodle-store';
+import { useAcompanhamentosSync } from '@/hooks/use-acompanhamentos';
+import { useActiveAcompanhamentoId } from '@/hooks/use-active-acompanhamento';
 import { useSafeMoodleClient } from '@/providers/moodle-provider';
-import { useReport134Full } from '@/hooks/use-report-134';
+import { useCombinedReport } from '@/hooks/useCombinedReport';
 import { ModernCourseCard } from './modern-course-card';
 
 export default function CourseCardsGrid() {
-  const { acompanhamentoAtivo, acompanhamentos } = useMoodleStore();
-  const active = acompanhamentos.find(a => a.id === acompanhamentoAtivo) || null;
+  // Buscar acompanhamentos persistentes e o ID ativo
+  const { acompanhamentos } = useAcompanhamentosSync();
+  const { data: activeAcompanhamentoId } = useActiveAcompanhamentoId();
+  const active = useMemo(() => acompanhamentos.find(a => a.id === activeAcompanhamentoId) || null, [acompanhamentos, activeAcompanhamentoId]);
   const client = useSafeMoodleClient();
-  const report134 = useReport134Full(client!, false);
+  const combinedReport = useCombinedReport();
 
   const filtered = useMemo(() => {
     if (!active) return [] as any[];
-    const ids = new Set(active.cursos.map(c => c.courseid));
-    const data = (report134.data?.data as any[]) || [];
+    const ids = new Set(active.cursos.map((c: any) => c.courseid));
+    const data = (combinedReport.data?.data as any[]) || [];
     return data.filter((r: any) => ids.has(Number(r.course_id)));
-  }, [active, report134.data]);
+  }, [active, combinedReport.data]);
 
   const byCourse = useMemo(() => {
     const map = new Map<number, { id: number; name: string; rows: any[] }>();

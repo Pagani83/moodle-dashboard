@@ -25,8 +25,7 @@ interface MoodleStore {
   // Filtros ativos
   filters: DashboardFilters;
   
-  // Acompanhamentos
-  acompanhamentos: Acompanhamento[];
+  // UI State para acompanhamentos
   acompanhamentoAtivo: string | null;
   
   // UI State
@@ -42,11 +41,7 @@ interface MoodleStore {
   setFilters: (filters: Partial<DashboardFilters>) => void;
   clearFilters: () => void;
   
-  // Actions - Acompanhamentos
-  addAcompanhamento: (acompanhamento: Omit<Acompanhamento, 'id' | 'criado_em' | 'atualizado_em'>) => void;
-  updateAcompanhamento: (id: string, updates: Partial<Acompanhamento>) => void;
-  removeAcompanhamento: (id: string) => void;
-  clearAllAcompanhamentos: () => void;
+  // Actions - Acompanhamentos (apenas UI state)
   setAcompanhamentoAtivo: (id: string | null) => void;
   
   // Actions - UI
@@ -87,7 +82,6 @@ export const useMoodleStore = create<MoodleStore>()(
       
       filters: defaultFilters,
       
-      acompanhamentos: [],
       acompanhamentoAtivo: null,
       
       sidebarCollapsed: false,
@@ -121,42 +115,7 @@ export const useMoodleStore = create<MoodleStore>()(
         set({ filters: defaultFilters });
       },
 
-      // Acompanhamentos
-      addAcompanhamento: (acompanhamentoData) => {
-        const now = new Date().toISOString();
-        const newAcompanhamento: Acompanhamento = {
-          id: `acomp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          criado_em: now,
-          atualizado_em: now,
-          ...acompanhamentoData,
-        };
-
-        set((state) => ({
-          acompanhamentos: [...state.acompanhamentos, newAcompanhamento],
-        }));
-      },
-
-      updateAcompanhamento: (id, updates) => {
-        set((state) => ({
-          acompanhamentos: state.acompanhamentos.map((acomp) =>
-            acomp.id === id
-              ? { ...acomp, ...updates, atualizado_em: new Date().toISOString() }
-              : acomp
-          ),
-        }));
-      },
-
-      removeAcompanhamento: (id) => {
-        set((state) => ({
-          acompanhamentos: state.acompanhamentos.filter((acomp) => acomp.id !== id),
-          acompanhamentoAtivo: state.acompanhamentoAtivo === id ? null : state.acompanhamentoAtivo,
-        }));
-      },
-
-      clearAllAcompanhamentos: () => {
-        set({ acompanhamentos: [], acompanhamentoAtivo: null });
-      },
-
+      // Acompanhamentos (apenas UI state)
       setAcompanhamentoAtivo: (id) => {
         set({ acompanhamentoAtivo: id });
       },
@@ -181,7 +140,6 @@ export const useMoodleStore = create<MoodleStore>()(
       partialize: (state) => ({
         config: state.config,
         isConfigured: state.isConfigured,
-        acompanhamentos: state.acompanhamentos,
         theme: state.theme,
         dashboardView: state.dashboardView,
         sidebarCollapsed: state.sidebarCollapsed,
@@ -243,10 +201,7 @@ export const useTempConfigStore = create<TempConfigStore>((set) => ({
 // ============================================================================
 
 // Hook para acompanhamento ativo
-export const useActiveAcompanhamento = () => {
-  const { acompanhamentos, acompanhamentoAtivo } = useMoodleStore();
-  return acompanhamentos.find(a => a.id === acompanhamentoAtivo) || null;
-};
+// Removido: useActiveAcompanhamento não é mais válido, pois acompanhamentos vêm da API
 
 // Hook para verificar se está configurado
 export const useIsConfigured = () => {
@@ -294,7 +249,7 @@ export const initializeDevConfig = () => {
   console.log('🔧 Tentando configurar Moodle:', {
     hasBaseUrl: !!envConfig.baseUrl,
     hasToken: !!envConfig.token,
-    baseUrl: envConfig.baseUrl.substring(0, 30) + '...'
+  baseUrl: envConfig.baseUrl ? String(envConfig.baseUrl).substring(0, 30) + '...' : '—'
   });
 
   if (envConfig.token && envConfig.baseUrl && envConfig.baseUrl !== '/api/moodle') {
@@ -312,23 +267,10 @@ export const resetAllStores = () => {
   useMoodleStore.getState().clearConfig();
   useMoodleStore.getState().clearFilters();
   useMoodleStore.setState({
-    acompanhamentos: [],
     acompanhamentoAtivo: null,
     sidebarCollapsed: false,
     dashboardView: 'cards',
   });
 };
 
-// Criar acompanhamento padrão CJUD
-export const createDefaultCJUDAcompanhamento = () => {
-  const { addAcompanhamento } = useMoodleStore.getState();
-  
-  const defaultAcompanhamento = {
-    nome: 'CJUD - Cursos 2025',
-    descricao: 'Acompanhamento padrão dos cursos CJUD para 2025',
-    cursos: [], // Será preenchido dinamicamente
-    mostrar_card_resumo: true,
-  };
-
-  addAcompanhamento(defaultAcompanhamento);
-};
+// Função removida - acompanhamentos agora são apenas via API/PostgreSQL

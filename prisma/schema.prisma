@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,22 +8,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String
-  role          UserRole  @default(USER)
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLogin     DateTime?
-  
-  // NextAuth fields
-  accounts      Account[]
-  sessions      Session[]
-  
-  // Acompanhamentos relationship
-  acompanhamentos Acompanhamento[]
+  id                     String           @id @default(cuid())
+  email                  String           @unique
+  name                   String?
+  password               String
+  role                   UserRole         @default(USER)
+  active                 Boolean          @default(true)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  lastLogin              DateTime?
+  activeAcompanhamentoId String?
+  accounts               Account[]
+  acompanhamentos        Acompanhamento[]
+  sessions               Session[]
 
   @@map("users")
 }
@@ -44,8 +38,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -70,44 +63,42 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
-enum UserRole {
-  ADMIN
-  USER
-}
-
 model Acompanhamento {
-  id                  String   @id @default(cuid())
+  id                  String                @id @default(cuid())
   nome                String
   descricao           String
-  mostrar_card_resumo Boolean  @default(true)
+  mostrar_card_resumo Boolean               @default(true)
   userId              String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
-  user   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cursos AcompanhamentoCurso[]
-  
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  cursos              AcompanhamentoCurso[]
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("acompanhamentos")
 }
 
 model AcompanhamentoCurso {
-  id               String   @id @default(cuid())
+  id               String               @id @default(cuid())
   acompanhamentoId String
   courseId         String
   courseName       String
   shortName        String?
   fullName         String
-  ativo            Boolean  @default(true)
+  ativo            Boolean              @default(true)
   status           AcompanhamentoStatus @default(CURSANDO)
-  progress         Float    @default(0)
+  progress         Float                @default(0)
   grade            Float?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  acompanhamento Acompanhamento @relation(fields: [acompanhamentoId], references: [id], onDelete: Cascade)
-  
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  acompanhamento   Acompanhamento       @relation(fields: [acompanhamentoId], references: [id], onDelete: Cascade)
+
   @@unique([acompanhamentoId, courseId])
   @@map("acompanhamento_cursos")
+}
+
+enum UserRole {
+  ADMIN
+  USER
 }
 
 enum AcompanhamentoStatus {

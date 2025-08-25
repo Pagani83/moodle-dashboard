@@ -2,29 +2,32 @@ import React from 'react';
 import { AlertCircle, Database, BookOpen, FileText, RefreshCw } from 'lucide-react';
 import { YouTubeWidget } from '../../youtube/youtube-widget';
 
+
 interface DashboardContentProps {
-  masterData: any;
-  summaries: any;
-  cacheStats: any;
-  report134Cache: any;
+  masterData?: any;
+  summaries?: any;
+  cacheStats?: any;
+  report134Cache?: any;
+  combinedReport?: any; // Novo: relatório combinado opcional
 }
 
 export function DashboardContent({
-  masterData,
-  summaries,
-  cacheStats,
-  report134Cache,
+  masterData = {},
+  summaries = {},
+  cacheStats = {},
+  report134Cache = {},
+  combinedReport = {},
 }: DashboardContentProps) {
   // Mostrar o widget do YouTube por padrão; oculte com NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET=false
   const showYouTubeWidget = process.env.NEXT_PUBLIC_SHOW_YOUTUBE_WIDGET !== 'false';
-  const isLoading = masterData.isLoading || summaries.isLoading;
+  const isLoading = (masterData.isLoading || false) || (summaries.isLoading || false) || (combinedReport.isLoading || false);
   const hasError = masterData.isError || summaries.isError;
 
   // Estados de carregamento específicos para mostrar progresso detalhado
   const loadingStates = [
-    { name: 'Dashboard Master', loading: masterData.isLoading, icon: Database },
-    { name: 'Resumos de Cursos', loading: summaries.isLoading, icon: BookOpen },
-    { name: 'Cache Report 134', loading: report134Cache.isLoading, icon: FileText },
+    { name: 'Dashboard Master', loading: masterData.isLoading || false, icon: Database },
+    { name: 'Resumos de Cursos', loading: summaries.isLoading || false, icon: BookOpen },
+    { name: 'Cache Report 134', loading: report134Cache.isLoading || false, icon: FileText },
   ];
 
   const activeLoadings = loadingStates.filter(state => state.loading);

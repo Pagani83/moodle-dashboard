@@ -14,7 +14,7 @@ import { MoodleClient, createMoodleClient } from '@/lib/moodle-client';
 import { queryClient } from '@/lib/query-client';
 import { useMoodleStore, initializeDevConfig } from '@/store/moodle-store';
 import type { MoodleConfig } from '@/types/moodle';
-import { REPORT_134_CONFIG, type Report134Cache } from '@/hooks/use-report-134';
+// import { REPORT_134_CONFIG, type Report134Cache } from '@/hooks/use-report-134'; // Removido: migrado para relatório combinado
 
 // ============================================================================
 // CONTEXT PARA CLIENTE MOODLE
@@ -141,34 +141,7 @@ export function MoodleProvider({
       return next;
     };
 
-    async function bootstrapReport134IfMissing() {
-      // Aguarda um tick para a reidratação do React Query concluir
-      await Promise.resolve();
-      const existing = queryClient.getQueryData(REPORT_134_CONFIG.cacheKey as unknown as any[]);
-      if (existing) return; // já existe cache (persisitido ou recém-carregado)
-      try {
-        const res = await fetch('/api/cache/report-134?latest=1');
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!json?.ok || !json?.hasFile) return;
-        const data = Array.isArray(json.data) ? json.data : [];
-        const payload: Report134Cache = {
-          data,
-          totalRows: data.length,
-          lastFetch: json.meta?.lastFetch ? new Date(json.meta.lastFetch) : new Date(),
-          nextScheduledFetch: getNextScheduledTime(),
-          cacheValidUntil: getNextScheduledTime(),
-          fetchDuration: Number(json.meta?.fetchDuration) || 0,
-        };
-        if (!cancelled) {
-          queryClient.setQueryData(REPORT_134_CONFIG.cacheKey as unknown as any[], payload);
-        }
-      } catch (e) {
-        console.warn('⚠️ Falha ao restaurar cache 134 automaticamente:', e);
-      }
-    }
-
-    bootstrapReport134IfMissing();
+  // Removido: lógica de bootstrap do cache 134 migrada para relatório combinado
     return () => { cancelled = true; };
   }, []);
 

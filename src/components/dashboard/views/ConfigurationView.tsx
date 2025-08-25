@@ -17,21 +17,21 @@ export function ConfigurationView({ config }: ConfigurationViewProps) {
         <div className="space-y-3 text-sm">
           <div>
             <span className="font-medium text-gray-700">URL Base:</span>
-            <span className="ml-2 text-gray-600">{config.baseUrl}</span>
+            <span className="ml-2 text-gray-600">{config.baseUrl ?? '—'}</span>
           </div>
           <div>
             <span className="font-medium text-gray-700">Token:</span>
             <span className="ml-2 text-gray-600 font-mono">
-              {config.token.substring(0, 8)}...
+              {config.token ? `${String(config.token).substring(0, 8)}...` : '—'}
             </span>
           </div>
           <div>
             <span className="font-medium text-gray-700">Categoria Padrão:</span>
-            <span className="ml-2 text-gray-600">{config.defaultCategory}</span>
+            <span className="ml-2 text-gray-600">{config.defaultCategory ?? '—'}</span>
           </div>
           <div>
             <span className="font-medium text-gray-700">Timeout:</span>
-            <span className="ml-2 text-gray-600">{config.timeout / 1000}s</span>
+            <span className="ml-2 text-gray-600">{((config.timeout ?? 0) / 1000)}s</span>
           </div>
         </div>
       ) : (

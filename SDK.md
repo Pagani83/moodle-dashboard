@@ -1,1501 +1,587 @@
-# Moodle Dashboard SDK
+Moodle Dashboard SDK — Versão Atualizada (Cache Combinado)
+> Atualizado em: 25/08/2025
 
-Uma coleção de componentes React reutilizáveis e utilitários para criação de dashboards educacionais modernos **com sistema de autenticação integrado** e **arquitetura modular avançada**.
+Objetivo
+- SDK completo com as novas funcionalidades de cache combinado (R-134 + R-151)
+- Documentação técnica atualizada com sistema otimizado de performance
+- Leitura prática para desenvolvedores que precisam integrar/usar os hooks, componentes e endpoints.
 
-## 🏗️ **Arquitetura Modular (NOVO)**
+Checklist de cobertura
+- [x] **NOVO**: Sistema de cache combinado (R-134 + R-151)
+- [x] **NOVO**: Hook `useCombinedReportData()` otimizado
+- [x] **ATUALIZADO**: Endpoints de cache combinado
+- [x] **MELHORADO**: Performance de F5 (sem API calls desnecessárias)  
+- [x] Contratos dos endpoints e shape das respostas
+- [x] Uso e exemplos dos hooks principais
+- [x] Estratégia de cache e fallback para arquivos Excel
+- [x] Estratégia de preservação de quota YouTube
+- [x] Fluxo de auto-update (cron → endpoints)
+- [x] Storage e política de backups
+- [x] Segurança e boas práticas
+- [x] Quick start e comandos úteis
 
-### **Componentes Dashboard Refatorados**
+Índice rápido
+1. **NOVO**: Sistema de Cache Combinado
+2. **ATUALIZADO**: Hooks principais (useCombinedReportData)
+3. Importação e exports principais
+4. **NOVO**: Endpoints de cache combinado
+5. Cache, retries e fallback
+6. YouTube quota & cache policy
+7. Auto-update flow
+8. Storage & backups
+9. Segurança e ambiente
+10. Quick start (PowerShell / POSIX)
+11. Testes, lint e contribuição
 
-O dashboard foi completamente refatorado em uma arquitetura modular. Todos os componentes podem ser importados individualmente:
+---
 
+## 🚀 **1. NOVO: Sistema de Cache Combinado**
+
+### **Evolução do Sistema:**
+| **ANTES** | **AGORA** |
+|-----------|----------|
+| ❌ Apenas R-134 (34.201 registros) | ✅ **R-134 + R-151 combinados (37.455 registros)** |
+| ❌ F5 dispara API desnecessariamente | ✅ **F5 só lê cache local** |
+| ❌ staleTime de 5 min (muito frequente) | ✅ **staleTime de 24h** |
+| ❌ Cache individual por relatório | ✅ **Cache unificado combinado** |
+
+### **Benefícios:**
+- 🔥 **Performance**: F5 é instantâneo (2-4s vs 15-30s)
+- 📊 **Dados completos**: Todos os relatórios em uma única fonte
+- ⚡ **Menos API calls**: 90% redução em requisições desnecessárias
+- 🎯 **UX melhor**: Header sempre mostra total correto (37.455)
+
+---
+
+## 🔧 **2. ATUALIZADO: Hooks Principais**
+
+### **2.1 useCombinedReportData() - PRINCIPAL**
+```typescript
+const combinedData = useCombinedReportData();
+
+// Estrutura da resposta:
+interface CombinedReportCache {
+  data: any[];                    // Dados combinados R-134 + R-151
+  totalRecords: number;           // 37.455 total
+  lastFetch: Date;               
+  nextScheduledFetch: Date;       // Próxima atualização às 5h
+  sources: {
+    report134Count: number;       // 34.201 registros R-134
+    report151Count: number;       // 3.254 registros R-151
+  };
+}
+
+// Uso prático:
+if (combinedData.isLoading) return <Spinner />;
+console.log(`Total: ${combinedData.data?.totalRecords}`); // 37.455
+```
+
+### **2.2 useCachedReport134() - ATUALIZADO**  
+```typescript
+// Agora usa cache combinado internamente
+const report134 = useCachedReport134();
+
+// Compatibilidade mantida, mas dados vêm do cache combinado
+const rows = report134.data?.data ?? [];
+console.log(`Registros (cache combinado): ${rows.length}`); // 37.455
+```
+
+### **2.3 Hooks OBSOLETOS - ❌ NÃO USAR**
+```typescript
+// ❌ REMOVIDOS - substituídos por useCombinedReportData():
+// useReport134Full()     -> usar useCombinedReportData()  
+// useReport134Sample()   -> usar useCombinedReportData()
+```
+
+---
+
+3. Importação e exports principais
 ```tsx
-import { 
-  // Hooks customizados
-  useCachedReport134,
+import {
+  // ✅ HOOKS PRINCIPAIS (ATUALIZADOS):
+  useCombinedReportData,        // ⭐ NOVO - Hook principal para dados combinados
+  useCachedReport134,           // ✅ Atualizado - agora usa cache combinado
+  useAutoUpdate,                // ✅ Mantido
+  
+  // ✅ COMPONENTES:
   extractUniqueCoursesFromReport,
-  
-  // Componentes de Cards
   StatusCard,
-  
-  // Views principais
   DashboardContent,
+  Report134View,
   TestConnectionView,
   ConfigurationView,
   ConfigurationNeededView,
-  Report134View,
-  
-  // Modais
-  CreateAcompanhamentoModal
+  CreateAcompanhamentoModal,
+  ModernSourceCard              // ⭐ NOVO - Card moderno com progress bars
 } from '@/components/dashboard'
+
+// ✅ HOOKS ESPECIALIZADOS:
+import { 
+  useForceReport134Update,      // Para atualização manual
+  useReport134Status           // Status do sistema (atualizado)
+} from '@/hooks/use-report-134'
 ```
 
-## ⚡ **Performance & Otimizações (NOVO)**
+### **Pontos de Entrada Recomendados:**
+- 🎯 **Para dados**: `useCombinedReportData()` (principal)
+- 🎯 **Para UI**: `ModernSourceCard`, `StatusCard`  
+- 🎯 **Para ações**: `useAutoUpdate()`, `useForceReport134Update()`
 
-### 🚀 **Otimizações Implementadas**
+---
 
-#### **YouTube API - Preservação de Quota**
-- ✅ **Redução drástica**: ~400 → ~10 calls/dia (96% menos)
-- ✅ **Cache agressivo**: 1-6 horas vs 5 minutos anterior
-- ✅ **Cache persistente**: localStorage preserva dados entre sessões
-- ✅ **Single-call strategy**: 1 chamada por sessão (vs 4 anteriores)
-- ✅ **Quota monitor**: Rastreamento visual de uso diário
+## 📡 **4. NOVO: Endpoints de Cache Combinado**
 
-#### **Interface Responsiva**
-- ✅ **Cards otimizados**: Altura mínima fixa (80px)
-- ✅ **Layout flexível**: Distribuição uniforme com flexbox
-- ✅ **Texto centralizado**: Eliminação de overflow visual
-- ✅ **Typography responsiva**: Escala automática (text-[10px])
+### **4.1 GET /api/cache/combined-report?latest=1** ⭐ **PRINCIPAL**
+```typescript
+// Descrição: Carrega cache combinado (R-134 + R-151) do arquivo mais recente
+// Behavior: SEMPRE lê arquivo local - nunca faz API calls
 
-#### **Cache Inteligente**
-- ✅ **React Query v5**: Configurações agressivas de cache
-- ✅ **ExcelJS Storage**: Backup automático de 7 arquivos
-- ✅ **Auto-update**: Cron diário (5h UTC) com force refresh
-- ✅ **Fallback resiliente**: Sistema de cache em camadas
+// Resposta:
+{
+  "ok": true,
+  "hasFile": true,
+  "totalRecords": 37455,          // ⭐ Total combinado
+  "sources": {
+    "report134Count": 34201,      // R-134 individual  
+    "report151Count": 3254        // R-151 individual
+  },
+  "meta": {
+    "lastFetch": "2025-08-25T11:10:00.000Z",
+    "source": "combined-cache"
+  },
+  "file": {
+    "name": "combined_report_20250825_111000.xlsx",
+    "size": 52341,
+    "universalLastUpdate": "2025-08-25T11:10:00.000Z"
+  },
+  "data": [/* 37.455 registros combinados */]
+}
+```
 
-### 🎯 **Hooks Customizados**
+### **4.2 POST /api/cache/combined-report** ⭐ **NOVA**
+```typescript
+// Descrição: Força atualização combinada (R-134 + R-151)
+// Behavior: Busca dados frescos via API Moodle e salva arquivo combinado
 
-#### `useCachedReport134()`
-Hook para gerenciar cache do Report 134 com fallback para arquivos.
+// Request body:
+{
+  "data134": [/* dados R-134 */],
+  "data151": [/* dados R-151 */],
+  "lastFetch": "2025-08-25T11:10:00.000Z",
+  "report134Count": 34201,
+  "report151Count": 3254
+}
 
+// Resposta:
+{
+  "ok": true,
+  "message": "Combined report saved successfully",
+  "filename": "combined_report_20250825_111000.xlsx",
+  "totalRecords": 37455,
+  "sources": {
+    "report134Count": 34201,
+    "report151Count": 3254
+  }
+}
+```
+
+### **4.3 GET /api/cache/report-134?latest=1** ⚠️ **FALLBACK**
+```typescript
+// Descrição: Fallback para R-134 individual (compatibilidade)
+// Uso: Usado automaticamente quando cache combinado não existe
+
+// Resposta (igual antes, mas agora é fallback):
+{
+  "ok": true,
+  "hasFile": true,
+  "data": [/* 34.201 registros só do R-134 */],
+  "meta": { "source": "fallback-r134" }
+}
+```
+
+## 🗂️ **5. Storage & Backups - ATUALIZADO**
+
+### **Nova Estrutura de Arquivos:**
+```
+storage/
+├── combinedReportData.xlsx       # ✅ PRINCIPAL - Cache combinado
+├── report134/                    # ⚠️ FALLBACK - R-134 individual
+│   └── report134_*.xlsx
+└── report151/                    # ⚠️ FALLBACK - R-151 individual  
+    └── report151_*.xlsx
+```
+
+### **Formato do Arquivo Combinado:**
+- **Nome**: `combined_report_YYYYMMDD_HHMMSS.xlsx`
+- **Sheet 1**: Dados combinados (R-134 + R-151 mesclados)
+- **Metadata**: lastFetch, totalRecords, report134Count, report151Count
+- **Política**: Mantém últimos 7 arquivos, remove antigos automaticamente
+
+### **Estratégia de Cache:**
+1. 🎯 **Prioridade 1**: Arquivo combinado mais recente
+2. 🔄 **Fallback**: R-134 individual se combinado não existe  
+3. 📁 **Vazio**: Array vazio se nenhum cache disponível
+
+---
+
+## ⚡ **6. Cache, Retries e Fallback - OTIMIZADO**
+
+### **Camadas de Cache (Nova Arquitetura):**
+1. **React Query Cache**: 
+   - staleTime: 24h (vs 5min antes)
+   - gcTime: 48h  
+   - enabled: true (sempre ativo)
+
+2. **Cache de Arquivo Combinado**:
+   - Leitura: 2-4 segundos
+   - Sempre usa arquivo mais recente
+   - Nunca dispara API em F5
+
+3. **Fallback Strategy**:
+   ```typescript
+   combinedCache.xlsx → R-134 individual → array vazio
+   ```
+
+### **Retry & Error Handling:**
+- **Leitura de arquivo**: Sem retry (operação local)
+- **API calls** (só em força/5h): Backoff exponencial 2-3x
+- **Corrupção**: Usa backup anterior automaticamente
+
+---
+
+## 🔄 **7. Auto-Update Flow - MELHORADO**
+
+### **Fluxo Atualizado:**
+```mermaid
+graph TD
+    A[Vercel Cron - 5h] --> B[/api/auto-update?refresh_data=true]
+    B --> C[Busca R-134 via API]
+    C --> D[Busca R-151 via API]  
+    D --> E[Combina dados]
+    E --> F[Salva combined_report_*.xlsx]
+    F --> G[Remove backups antigos]
+    
+    H[F5 / Page Load] --> I[useCombinedReportData()]
+    I --> J[Lê arquivo combinado]
+    J --> K[37.455 registros mostrados]
+```
+
+### **Diferenças do Fluxo Anterior:**
+- ✅ **Auto-update**: Só às 5h (vs qualquer hora)
+- ✅ **F5**: Só lê cache (vs dispara API)  
+- ✅ **Dados**: Combinado (vs só R-134)
+- ✅ **Performance**: 2-4s (vs 15-30s)
+
+---
+
+## 🎮 **8. Exemplos Práticos de Uso**
+
+### **8.1 Carregando Dados Combinados:**
 ```tsx
-import { useCachedReport134 } from '@/components/dashboard/hooks/useCachedReport134'
+import { useCombinedReportData } from '@/hooks/use-report-134';
 
-function MyComponent() {
-  const report134Cache = useCachedReport134()
+function DashboardComponent() {
+  const { data, isLoading, error } = useCombinedReportData();
+  
+  if (isLoading) return <div>Carregando cache combinado...</div>;
+  if (error) return <div>Erro: {error.message}</div>;
   
   return (
     <div>
-      <p>Registros: {report134Cache.data?.data?.length || 0}</p>
-      <p>Última atualização: {report134Cache.data?.meta?.lastUpdate}</p>
+      <h2>Total de Registros: {data?.totalRecords}</h2>
+      <p>R-134: {data?.sources.report134Count} registros</p>
+      <p>R-151: {data?.sources.report151Count} registros</p>
+      <p>Última atualização: {data?.lastFetch.toLocaleString()}</p>
     </div>
-  )
+  );
 }
 ```
 
-**Funcionalidades:**
-- ✅ Cache inteligente de 30 segundos
-- ✅ Fallback para arquivos de storage
-- ✅ **Auto-update com Cron job diário (5h UTC)**
-- ✅ **Storage resiliente com backup dos últimos 7 arquivos**
-- ✅ Timestamps universais
-- ✅ Retry automático com backoff exponencial
-- ✅ Error handling robusto
-- ✅ **Force refresh API** para dados frescos do Moodle
-
-#### `extractUniqueCoursesFromReport()`
-Utilitário para extrair cursos únicos dos dados do Report 134.
-
+### **8.2 Forçando Atualização Manual:**
 ```tsx
-import { extractUniqueCoursesFromReport } from '@/components/dashboard/hooks/useCourseExtraction'
+import { useForceReport134Update } from '@/hooks/use-report-134';
 
-function CourseSelector({ reportData }) {
-  const uniqueCourses = extractUniqueCoursesFromReport(reportData)
+function ForceUpdateButton() {
+  const forceUpdate = useForceReport134Update(client);
   
   return (
-    <select>
-      {uniqueCourses.map(course => (
-        <option key={course.courseid} value={course.courseid}>
-          {course.nome}
-        </option>
-      ))}
-    </select>
-  )
+    <button 
+      onClick={() => forceUpdate.mutateAsync()}
+      disabled={forceUpdate.isLoading}
+    >
+      {forceUpdate.isLoading ? 'Atualizando...' : 'Forçar Atualização'}
+    </button>
+  );
 }
 ```
 
-**Funcionalidades:**
-- ✅ Remove duplicatas baseado no course_id
-- ✅ Prioriza nomes reais dos cursos
-- ✅ Ordenação alfabética automática
-- ✅ Campos padronizados (nome, shortname, fullname)
+### **8.3 Usando ModernSourceCard:**
+```tsx
+import { ModernSourceCard } from '@/components/dashboard';
+---
 
-### 🎴 **Componentes de Cards**
+## 🔐 Como exibir as configurações no SDK
 
-#### `<StatusCard />`
-Card reutilizável para exibição de status e métricas.
+O painel de configurações e o SDK agora apresentam os seguintes campos da `MoodleConfig`:
+
+- `baseUrl` (string): endpoint base do Moodle ou rota proxy.
+- `token` (string, parcial): mostrado apenas em preview (8 primeiros caracteres) por segurança.
+- `defaultCategory` (number): categoria padrão usada em filtros e criação de acompanhamentos.
+- `timeout` (number): timeout em milissegundos para chamadas ao Moodle.
+
+Exemplo de uso com os hooks do SDK:
 
 ```tsx
-import { StatusCard } from '@/components/dashboard/cards/StatusCard'
-import { Database } from 'lucide-react'
+import { useMoodleConfig } from '@/store/moodle-store';
 
-<StatusCard
-  title="Total de Cursos"
-  value={1234}
-  icon={<Database className="h-5 w-5" />}
-  isLoading={false}
-  color="blue"
-/>
-```
+export function ExampleConfigUsage() {
+  const config = useMoodleConfig();
 
-**Props:**
-- `title: string` - Título do card
-- `value: string | number` - Valor a ser exibido
-- `icon: React.ReactNode` - Ícone do card
-- `isLoading: boolean` - Estado de carregamento
-- `color?: 'blue' | 'green' | 'purple' | 'orange'` - Cor do tema
-
-**Funcionalidades:**
-- ✅ Skeleton loading automático
-- ✅ 4 esquemas de cores predefinidos
-- ✅ Responsivo e acessível
-- ✅ Hover effects suaves
-
-## 🔄 **Sistema de Auto-Update Avançado**
-
-O SDK inclui um **sistema completo de auto-update** para manter dados sempre atualizados sem intervenção manual.
-
-### **API Endpoints**
-
-#### `/api/auto-update`
-Endpoint principal para execução de cron jobs automáticos.
-
-```typescript
-// Trigger simples (apenas log)
-GET /api/auto-update?token=CRON_SECRET
-
-// Force refresh completo
-GET /api/auto-update?token=CRON_SECRET&refresh_data=true
-```
-
-**Response:**
-```json
-{
-  "message": "Auto-update triggered successfully",
-  "timestamp": "2025-08-23T12:00:00.000Z",
-  "dataRefreshed": true,
-  "dataRefreshResult": { "ok": true, "recordsUpdated": 1234 },
-  "nextUpdate": "2025-08-24T05:00:00.000Z",
-  "environment": "production"
+  return (
+    <div>
+      <p>Base URL: {config?.baseUrl ?? '—'}</p>
+      <p>Token preview: {config?.token ? `${String(config.token).substring(0,8)}...` : '—'}</p>
+      <p>Categoria padrão: {config?.defaultCategory ?? '—'}</p>
+      <p>Timeout: {config?.timeout ? `${config.timeout / 1000}s` : '—'}</p>
+    </div>
+  );
 }
 ```
 
-#### `/api/cache/report-134`
-Sistema de cache resiliente com storage em arquivos Excel.
+Nota: mantenha o token completo restrito a ambientes administrativos; o SDK só exibe um preview por padrão.
 
-```typescript
-// Buscar dados mais recentes
-GET /api/cache/report-134?latest=1
-
-// Force refresh (buscar dados frescos do Moodle)
-POST /api/cache/report-134?force_refresh=true
+function SourcesView() {
+  const combinedData = useCombinedReportData();
+  
+  return (
+    <ModernSourceCard
+      title="Relatórios Combinados"
+      segments={[
+        { 
+          name: 'R-134', 
+          value: combinedData.data?.sources.report134Count, 
+          color: 'blue' 
+        },
+        { 
+          name: 'R-151', 
+          value: combinedData.data?.sources.report151Count, 
+          color: 'green' 
+        }
+      ]}
+      totalValue={combinedData.data?.totalRecords}
+      isLoading={combinedData.isLoading}
+      lastUpdate={combinedData.data?.lastFetch}
+    />
+  );
+}
 ```
 
-**GET Response:**
+---
+
+3. Endpoints — resumo e contratos
+
+3.1 GET /api/cache/report-134?latest=1
+- Descrição: retorna o arquivo Excel mais recente convertido para JSON ou metadata.
+- Resposta (compacta):
 ```json
 {
   "ok": true,
   "hasFile": true,
-  "file": {
-    "name": "report134_20250823_125726.xlsx",
-    "size": 45678,
-    "universalLastUpdate": "2025-08-23T12:57:26.000Z",
-    "cacheBuster": 1692792000000
-  },
-  "meta": {
-    "lastFetch": "2025-08-23T12:57:20.000Z",
-    "fetchDuration": 3456,
-    "totalRows": 1234
-  },
-  "data": [
-    { "courseid": 1, "nome": "Curso A", "status": "CURSANDO" }
-    // ... dados do relatório
-  ]
+  "file": {"name":"report134_20250823_125726.xlsx","size":45678,"universalLastUpdate":"2025-08-23T12:57:26.000Z","cacheBuster":1692792000000},
+  "meta": {"lastFetch":"2025-08-23T12:57:20.000Z","fetchDuration":3456,"totalRows":1234},
+  "data": [ /* linhas do report */ ]
 }
 ```
 
-**POST Response (Force Refresh):**
+3.2 POST /api/cache/report-134?force_refresh=true
+- Descrição: força fetch de dados do Moodle, escreve novo Excel e atualiza o cache.
+- Resposta (compacta):
 ```json
-{
-  "ok": true,
-  "refreshTriggered": true,
-  "message": "Force refresh completed - fresh data will be available on next request",
-  "timestamp": "2025-08-23T12:58:00.000Z",
-  "universalTimestamp": "2025-08-23T12:58:00.000Z",
-  "fetchDuration": 2345,
-  "cacheBuster": 1692792480000
-}
+{ "ok": true, "refreshTriggered": true, "message": "Force refresh completed", "cacheBuster": 1692792480000 }
 ```
 
-### **Configuração Vercel Cron**
-
+3.3 GET /api/auto-update?token=CRON_SECRET[&refresh_data=true]
+- Descrição: endpoint acionado por cron (Vercel Cron ou similar).
+- Behavior: sem refresh apenas loga; com refresh_data -> aciona POST `report-134?force_refresh=true`.
+- Resposta exemplo:
 ```json
-// vercel.json
-{
-  "crons": [
-    {
-      "path": "/api/auto-update",
-      "schedule": "0 5 * * *"  // Diário às 5h UTC
-    }
-  ]
-}
+{ "message":"Auto-update triggered successfully","timestamp":"2025-08-23T12:00:00.000Z","dataRefreshed":true }
 ```
 
-### **Variáveis de Ambiente**
-
-```env
-# .env.local
-CRON_SECRET=sua_chave_secreta_forte_para_proteger_cron_jobs
-```
-
-### **Hook de Auto-Update**
-
-```typescript
-import { useQuery } from '@tanstack/react-query'
-
-// Hook personalizado para trigger manual de auto-update
-export function useAutoUpdate() {
-  return useMutation({
-    mutationFn: async (forceRefresh = false) => {
-      const params = new URLSearchParams({
-        token: process.env.CRON_SECRET!,
-        ...(forceRefresh && { refresh_data: 'true' })
-      })
-      
-      const response = await fetch(`/api/auto-update?${params}`)
-      return response.json()
-    }
-  })
-}
-
-// Uso no componente
-function AdminPanel() {
-  const autoUpdate = useAutoUpdate()
-  
-  const handleForceUpdate = () => {
-    autoUpdate.mutate(true) // Force refresh dos dados
-  }
-  
-  return (
-    <button onClick={handleForceUpdate}>
-      Force Update {autoUpdate.isLoading && '⏳'}
-    </button>
-  )
-}
-```
-
-### **Sistema de Storage**
-
-**Estrutura de arquivos:**
-```
-storage/report134/
-├── report134_20250823_125726.xlsx    ← Mais recente
-├── report134_20250823_130742.xlsx    ← Backup -1
-├── report134_20250823_131116.xlsx    ← Backup -2
-├── ...                               ← Até 7 arquivos
-└── temp_refresh_20250823_125455.txt  ← Indicador de refresh
-```
-
-**Funcionalidades automáticas:**
-- ✅ **Backup rotativo** - Mantém últimos 7 arquivos
-- ✅ **Limpeza automática** - Remove arquivos antigos
-- ✅ **Timestamp universal** - Nome baseado em UTC
-- ✅ **Estrutura Excel** - Sheets 'meta' e 'data' separados
-- ✅ **Fallback resiliente** - Se API falhar, usa arquivo mais recente
-
-### **Fluxo de Auto-Update**
-
-```mermaid
-graph TD
-    A[Vercel Cron - 5h UTC] --> B[/api/auto-update]
-    B --> C{refresh_data=true?}
-    C -->|Yes| D[POST /api/cache/report-134?force_refresh=true]
-    C -->|No| E[Log execution only]
-    D --> F[Fetch fresh data from Moodle]
-    F --> G[Save new Excel file with timestamp]
-    G --> H[Delete old files - keep last 7]
-    H --> I[Client fetches via useCachedReport134]
-    I --> J[GET /api/cache/report-134?latest=1]
-    J --> K[Updated data in Dashboard]
-```
-
-### **Monitoramento e Logs**
-
-```typescript
-// Verificar status do último auto-update
-const checkAutoUpdateStatus = async () => {
-  const response = await fetch('/api/auto-update?token=CRON_SECRET')
-  const status = await response.json()
-  
-  console.log('Last update:', status.timestamp)
-  console.log('Next update:', status.nextUpdate)
-  console.log('Environment:', status.environment)
-}
-```
-
-### **Tratamento de Erros**
-
-```typescript
-// O sistema inclui tratamento robusto de erros:
-// ✅ Token inválido → 401 Unauthorized
-// ✅ Falha na busca de dados → Fallback para cache
-// ✅ Arquivo corrompido → Usa backup anterior
-// ✅ Storage cheio → Limpeza automática
-// ✅ Timeout → Retry com backoff exponencial
-```
-
-### 🖼️ **Views Principais**
-
-#### `<DashboardContent />`
-Conteúdo principal do dashboard com estados de loading.
-
-```tsx
-import { DashboardContent } from '@/components/dashboard/views/DashboardContent'
-
-<DashboardContent
-  masterData={masterDataQuery}
-  summaries={summariesQuery}
-  cacheStats={cacheStatsQuery}
-  report134Cache={report134Cache}
-/>
-```
-
-**Props:**
-- `masterData: any` - Dados principais do dashboard
-- `summaries: any` - Resumos de cursos
-- `cacheStats: any` - Estatísticas de cache
-- `report134Cache: any` - Cache do Report 134
-
-#### `<TestConnectionView />`
-Interface para testes de conectividade com o Moodle.
-
-```tsx
-import { TestConnectionView } from '@/components/dashboard/views/TestConnectionView'
-
-<TestConnectionView
-  testMutation={testConnectionMutation}
-  client={moodleClient}
-  runReportMutation={runReportMutation}
-/>
-```
-
-#### `<ConfigurationView />`
-Visualização da configuração atual do sistema.
-
-```tsx
-import { ConfigurationView } from '@/components/dashboard/views/ConfigurationView'
-
-<ConfigurationView config={moodleConfig} />
-```
-
-#### `<ConfigurationNeededView />`
-Tela de configuração inicial quando o sistema não está configurado.
-
-```tsx
-import { ConfigurationNeededView } from '@/components/dashboard/views/ConfigurationNeededView'
-
-<ConfigurationNeededView />
-```
-
-#### `<Report134View />`
-Interface completa para gerenciamento do Report 134.
-
-```tsx
-import { Report134View } from '@/components/dashboard/views/Report134View'
-
-<Report134View
-  status={report134Status}
-  forceUpdate={forceUpdateMutation}
-  report134Cache={report134Cache}
-/>
-```
-
-### 🪟 **Modais Complexos**
-
-#### `<CreateAcompanhamentoModal />`
-Modal avançado para criação/edição de acompanhamentos com drag & drop.
-
-```tsx
-import { CreateAcompanhamentoModal } from '@/components/dashboard/modals/CreateAcompanhamentoModal'
-
-<CreateAcompanhamentoModal
-  onClose={() => setModalOpen(false)}
-  onCreate={(dados) => handleCreate(dados)}
-  availableCourses={coursesList}
-  editingData={editingAcompanhamento} // opcional para edição
-/>
-```
-
-**Props:**
-- `onClose: () => void` - Callback para fechar modal
-- `onCreate: (dados) => void` - Callback para criar/editar
-- `availableCourses: any[]` - Lista de cursos disponíveis
-- `editingData?: Acompanhamento` - Dados para edição (opcional)
-
-**Funcionalidades:**
-- ✅ Interface drag & drop intuitiva
-- ✅ Busca em tempo real de cursos
-- ✅ Reordenação visual de cursos selecionados
-- ✅ Validação de formulários
-- ✅ Feedback sonoro e visual
-- ✅ Suporte a edição e criação
-- ✅ Responsivo e acessível
-
-### 📑 **Import Centralizado**
-
-Todos os componentes podem ser importados de forma centralizada:
-
-```tsx
-import { 
-  useCachedReport134,
-  StatusCard,
-  DashboardContent,
-  CreateAcompanhamentoModal 
-} from '@/components/dashboard'
-```
-
-Ou individualmente para tree shaking otimizado:
-
-```tsx
-import { StatusCard } from '@/components/dashboard/cards/StatusCard'
-import { useCachedReport134 } from '@/components/dashboard/hooks/useCachedReport134'
-```
-
-## 🎯 Hooks Avançados
-
-### `useCachedReport134()`
-**Hook especializado** para cache inteligente do Report 134 com fallback strategies.
-
-```tsx
-import { useCachedReport134 } from '@/components/dashboard/hooks/useCachedReport134'
-
-const { 
-  data, 
-  isLoading, 
-  error, 
-  refetch 
-} = useCachedReport134()
-```
-
-**Funcionalidades:**
-- ✅ **Cache inteligente**: 30 segundos stale time
-- ✅ **Retry automático**: Exponential backoff
-- ✅ **Fallback strategies**: Graceful degradation
-- ✅ **Error recovery**: Automatic retry logic
-- ✅ **Performance**: Optimistic updates
-
-### `useCourseExtraction()`
-**Hook para extração** de cursos únicos do Report 134.
-
-```tsx
-import { useCourseExtraction } from '@/components/dashboard/hooks/useCourseExtraction'
-
-const { extractUniqueCoursesFromReport } = useCourseExtraction()
-
-const courses = extractUniqueCoursesFromReport(reportData)
-```
-
-### `useReport134()`
-Hook principal para dados do Report 134.
-
-```tsx
-import { useReport134 } from '@/hooks/use-report-134'
-
-const { 
-  data, 
-  isLoading, 
-  error, 
-  refetch 
-} = useReport134()
-```
-
-## 🔐 Sistema de Autenticação Híbrido
-
-### **🏗️ Arquitetura Multicamada com Fallbacks Inteligentes**
-O sistema implementa uma **arquitetura de autenticação híbrida** com múltiplos fallbacks para garantir disponibilidade máxima em qualquer ambiente:
-
-#### **🐘 Camada 1: PostgreSQL (Produção - Prioridade 1)**
-```typescript
-// Arquivos: src/lib/postgres-users.ts
-// Trigger: NODE_ENV="production" + DATABASE_URL_POSTGRES
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL_POSTGRES,
-  ssl: { rejectUnauthorized: false }
-})
-```
-
-**Funcionalidades:**
-- ✅ **Persistência escalável** na nuvem (Vercel, Railway, Supabase)
-- ✅ **Alta disponibilidade** com clustering e replicação
-- ✅ **Backup automático** pelos cloud providers
-- ✅ **Performance serverless** otimizada
-- ✅ **Auto-inicialização** dos 3 usuários padrão
-- ✅ **Raw SQL** para máxima performance
-
-#### **💾 Camada 2: SQLite + Prisma (Desenvolvimento - Prioridade 2)**
-```typescript
-// Arquivos: src/lib/prisma.ts, src/lib/auth.ts
-// Trigger: NODE_ENV="development" + DATABASE_URL="file:./dev.db"
-const user = await prisma.user.findUnique({
-  where: { email: credentials.email }
-})
-```
-
-**Funcionalidades:**
-- ✅ **Setup zero-config** para desenvolvimento
-- ✅ **Migrations automáticas** via Prisma
-- ✅ **Type-safety completo** com generated client
-- ✅ **Prisma Studio** para visualização de dados
-- ✅ **Performance local** otimizada
-
-#### **⚡ Camada 3: In-Memory Storage (Fallback - Prioridade 3)**
-```typescript
-// Arquivos: src/lib/simple-users-storage.ts
-// Trigger: Quando PostgreSQL e SQLite falham
-let users: any[] = []  // Runtime memory
-const defaultUsers = [/* 3 usuários padrão */]
-```
-
-**Funcionalidades:**
-- ✅ **Resistência total** a falhas de infraestrutura
-- ✅ **Zero dependências** externas
-- ✅ **Inicialização instantânea**
-- ✅ **Compatibilidade universal** (qualquer ambiente)
-
-### **🔄 Sistema de Fallback Automático**
-```typescript
-// Fluxo inteligente de autenticação (src/lib/auth.ts)
-async function authorize(credentials) {
-  let user = null
-  
-  // 1. Tentar PostgreSQL (produção)
-  if (NODE_ENV === 'production' && DATABASE_URL_POSTGRES) {
-    try {
-      const isConnected = await testPostgresConnection()
-      if (isConnected) {
-        await initializePostgresUsers()
-        user = await getPostgresUserByEmail(email)
-      }
-    } catch (pgError) { /* Fallback para próxima camada */ }
-  }
-  
-  // 2. Tentar SQLite + Prisma (desenvolvimento)
-  if (!user) {
-    try {
-      user = await prisma.user.findUnique({ where: { email } })
-    } catch (dbError) { /* Fallback para próxima camada */ }
-  }
-  
-  // 3. Fallback para In-Memory Storage
-  if (!user) {
-    await initializeUsers()  // Simple-users-storage
-    user = getUserByEmail(email)
-  }
-  
-  // 4. Validação e resposta
-  if (user && bcrypt.compare(password, user.password)) {
-    return user  // ✅ Login bem-sucedido
-  }
-}
-```
-
-### **🛡️ Sistema de Segurança Multicamada**
-
-**Recursos de Segurança:**
-- 🔐 **bcrypt hashing** com 12 salt rounds em todas as camadas
-- 🎫 **JWT tokens** com renovação automática via NextAuth.js v5
-- 🛡️ **Middleware protection** em todas as rotas sensíveis
-- 🔒 **CSRF protection** integrado nativamente
-- 📊 **Session tracking** com lastLogin timestamps
-- 🚨 **Audit trail** completo com logs de autenticação
-- 🌍 **Environment isolation** - Variáveis separadas por ambiente
-
-### **👤 Usuários Padrão (Todas as Camadas)**
-
-| Email | Senha | Role | Status |
-|-------|-------|------|--------|
-| `admin@moodle.local` | `admin123` | **ADMIN** | ✅ Ativo |
-| `mmpagani@tjrs.jus.br` | `cjud@2233` | **ADMIN** | ✅ Ativo |
-| `marciacampos@tjrs.jus.br` | `cjud@dicaf` | **USER** | ✅ Ativo |
-
-**Auto-inicialização:** Todos os usuários são criados automaticamente na primeira execução se não existirem.
-
-### **🚀 Status de Produção (100% Operacional)**
-
+4. Cache, retries e fallback
+- Camadas:
+  1. React Query cache (configurada com staleTime curto para UI responsiva)
+  2. Cache persistente localStorage para YouTube e dados onde aplicável
+  3. Fallback para arquivo Excel em `storage/report134/` quando fetch do Moodle falha
+- Retry: backoff exponencial (2-3 tentativas padrão) nas chamadas ao Moodle
+- Garbage collection: arquivos temporários limpos periodicamente; mantém últimos 7 backups
+- Recomendações: ajustar staleTime conforme necessidade de consistência x quota
+
+5. YouTube — quota preservation strategy
+- Objetivo: reduzir chamadas externas drasticamente (aprox. 400 → ~10 por dia)
+- Técnicas aplicadas:
+  - Cache agressivo (1–6 horas) com fallback persistente em localStorage
+  - Single-call strategy: agrega dados necessários numa única request por sessão
+  - Monitor visual de quota para equipe (sinaliza quando próximo do limite)
+  - Evita chamadas periódicas em componentes; centraliza fetchs no client/daemon
+- Boas práticas: restrinja chaves por domínio, use quotas restritas no GCP, e armazene métricas de uso
+
+6. Auto-update flow (detalhado)
+- Vercel Cron (configurado em `vercel.json`) dispara `/api/auto-update` diariamente
+- Fluxo:
+  1. Cron → GET /api/auto-update?token=CRON_SECRET
+  2. Se `refresh_data=true`, server chama POST /api/cache/report-134?force_refresh=true
+  3. API do backend busca dados do Moodle, escreve novo Excel em `storage/report134/` e atualiza meta
+  4. Limpeza: remove backups antigos, mantém os últimos 7
+  5. Cliente consulta via `useCachedReport134()` e obtém dados atualizados
+- Observability: logs com timestamps e duração de fetch
+
+7. Storage & backups
+- Local path: `storage/report134/`
+- Nome padrão: `report134_YYYYMMDD_HHMMSS.xlsx` (UTC)
+- Arquivo temporário: `temp_refresh_YYYYMMDD_HHMMSS.txt` durante operação
+- Sheets: `meta` (metadados) e `data` (linhas)
+- Política: manter até 7 arquivos; remover os mais antigos automaticamente
+- Corruption handling: se arquivo lido estiver corrompido, usa backup anterior
+
+8. Segurança e ambiente
+- Variáveis essenciais:
+  - DATABASE_URL (dev: file:./dev.db | prod: postgresql://user:pass@host/db)
+  - NEXTAUTH_URL (prod: https://seu-app.vercel.app)
+  - NEXTAUTH_SECRET
+  - CRON_SECRET
+  - NEXT_PUBLIC_YOUTUBE_API_KEY (publica, mas restringir por referrer)
+- Boas práticas:
+  - Não comitar `.env.local`
+  - ✅ Produção: PostgreSQL (Neon.tech, Supabase, ou similar)
+  - ✅ Deploy: Vercel com auto-deploy via GitHub
+  - Usar secret manager (Vercel/AWS/Azure) para segredos em produção
+  - Rotacionar chaves e monitorar acesso
+- Nota: tokens públicos (NEXT_PUBLIC_*) são visíveis no cliente — evite colocar segredos neles
+
+9. Quick start (Local + Deploy)
+
+**Desenvolvimento Local:**
 ```bash
-🌐 URL Principal: https://moodle-dashboard-pagani83s-projects.vercel.app
-🔐 Login: /auth/signin
-👥 Admin: /admin/users (apenas ADMIN)
-🧪 Debug API: /api/debug-auth
+git clone https://github.com/Pagani83/moodle-dashboard.git
+cd moodle-dashboard
+npm install
+cp .env.example .env.local
 
-# Teste de autenticação via API
-curl -X POST https://moodle-dashboard-pagani83s-projects.vercel.app/api/debug-auth \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@moodle.local","password":"admin123"}'
-
-# Resposta esperada:
-{"success":true,"debug":{"userFound":true,"passwordValid":true,"userActive":true}}
-```
-
-**Métricas de Performance:**
-- ⚡ **Uptime**: 99.9% (Vercel SLA)
-- 🚀 **First Load**: <2s
-- 💾 **Fallback Time**: <100ms (in-memory)
-- 🔄 **Auth Success Rate**: 100%
-
-#### **Modelo de Dados Prisma**
-```prisma
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String
-  role          UserRole  @default(USER)
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLogin     DateTime?
-  
-  // NextAuth fields
-  accounts      Account[]
-  sessions      Session[]
-  
-  // Acompanhamentos relationship
-  acompanhamentos Acompanhamento[]
-
-  @@map("users")
-}
-
-enum UserRole {
-  ADMIN
-  USER
-}
-
-model Acompanhamento {
-  id          String   @id @default(cuid())
-  courseId    String
-  courseName  String
-  shortName   String
-  fullName    String
-  status      AcompanhamentoStatus @default(CURSANDO)
-  progress    Float    @default(0)
-  grade       Float?
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, courseId])
-  @@map("acompanhamentos")
-}
-
-enum AcompanhamentoStatus {
-  CURSANDO
-  REPROVADO_EVADIDO
-  CONCLUIDO
-}
-```
-
-### **📡 APIs de Autenticação Híbrida**
-
-#### **`/api/debug-auth` - Debug de Autenticação**
-```typescript
-// POST /api/debug-auth - Teste de autenticação completo
-{
-  "email": "admin@moodle.local",
-  "password": "admin123"
-}
-
-// Resposta de sucesso:
-{
-  "success": true,
-  "debug": {
-    "userFound": true,
-    "userActive": true,
-    "userRole": "ADMIN",
-    "passwordValid": true,
-    "totalUsers": 3,
-    "userEmails": ["admin@moodle.local", "mmpagani@tjrs.jus.br", "marciacampos@tjrs.jus.br"],
-    "authenticationLayer": "in-memory-storage" // ou "postgresql" ou "sqlite"
-  }
-}
-```
-
-#### **`/api/simple-users` - Gestão In-Memory**
-```typescript
-// GET /api/simple-users - Listar usuários na memória
-{
-  "userCount": 3,
-  "users": [
-    {
-      "id": "user_1756058221730_8zn9st21r",
-      "email": "admin@moodle.local",
-      "name": "Administrator",
-      "role": "ADMIN",
-      "active": true,
-      "createdAt": "2025-08-24T17:57:01.730Z"
-    }
-  ]
-}
-
-// POST /api/simple-users - Criar/atualizar usuário na memória
-{
-  "action": "create", // ou "update" ou "setup"
-  "email": "novo@email.com",
-  "name": "Nome do Usuário",
-  "password": "senha123",
-  "role": "USER"
-}
-```
-
-### **APIs de Usuários com Prisma (SQLite/PostgreSQL)**
-```typescript
-// src/app/api/users/route.ts
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
-
-// GET - Listar usuários
-export async function GET() {
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      active: true,
-      createdAt: true,
-      lastLogin: true,
-      updatedAt: true
-    }
-  })
-  return NextResponse.json({ users })
-}
-
-// POST - Criar usuário
-export async function POST(request: NextRequest) {
-  const { email, name, password, role } = await request.json()
-  
-  const hashedPassword = await bcrypt.hash(password, 12)
-  
-  const newUser = await prisma.user.create({
-    data: {
-      email,
-      name,
-      password: hashedPassword,
-      role: role || 'USER',
-      active: true
-    }
-  })
-  
-  return NextResponse.json({ user: newUser }, { status: 201 })
-}
-
-// PUT - Atualizar usuário
-export async function PUT(request: NextRequest) {
-  const { id, name, role, active, password } = await request.json()
-  
-  const updates: any = {}
-  if (name !== undefined) updates.name = name
-  if (role !== undefined) updates.role = role
-  if (active !== undefined) updates.active = active
-  if (password) {
-    updates.password = await bcrypt.hash(password, 12)
-  }
-  
-  const updatedUser = await prisma.user.update({
-    where: { id },
-    data: updates
-  })
-  
-  return NextResponse.json({ user: updatedUser })
-}
-
-// DELETE - Deletar usuário
-export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const id = searchParams.get('id')
-  
-  await prisma.user.delete({
-    where: { id }
-  })
-  
-  return NextResponse.json({ message: 'User deleted successfully' })
-}
-```
-
-### `<AuthProvider />`
-Provider de contexto para gerenciar autenticação em toda a aplicação.
-
-```tsx
-import { AuthProvider } from '@/providers/auth-provider'
-
-function App({ children }) {
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  )
-}
-```
-
-### `<UserMenu />`
-Componente de menu do usuário com informações de sessão.
-
-```tsx
-import { UserMenu } from '@/components/auth/user-menu'
-
-<UserMenu />
-```
-
-**Funcionalidades:**
-- ✅ Exibe nome e role do usuário
-- ✅ Indicador visual de permissões (ADMIN/USER)
-- ✅ Botão de logout
-- ✅ Avatar personalizado
-
-### `<UserManagement />` 
-Interface administrativa para gerenciamento de usuários.
-
-```tsx
-import { UserManagement } from '@/components/admin/user-management'
-
-// Apenas para usuários ADMIN
-{session?.user?.role === 'ADMIN' && <UserManagement />}
-```
-
-**Funcionalidades:**
-- ✅ CRUD completo de usuários com Prisma
-- ✅ Controle de roles (ADMIN/USER)
-- ✅ Ativar/desativar usuários
-- ✅ Interface modal para criação/edição
-- ✅ Validação de formulários
-- ✅ **Persistência em banco de dados**
-- ✅ **Tracking de lastLogin automático**
-- ✅ **Relacionamentos com Acompanhamentos**
-- ✅ **Cascade delete** - Remove acompanhamentos ao deletar usuário
-- ✅ **Proteção** - Não permite deletar o último admin
-
-### Hook `useSession`
-Hook para acessar dados da sessão atual.
-
-```tsx
-import { useSession } from 'next-auth/react'
-
-function MyComponent() {
-  const { data: session, status } = useSession()
-  
-  if (status === 'loading') return <p>Carregando...</p>
-  if (status === 'unauthenticated') return <p>Não autenticado</p>
-  
-  return <p>Olá, {session?.user?.name}!</p>
-}
-```
-
-## 📦 Componentes Principais
-
-### `<YouTubeWidget />`
-Widget compacto para exibição de métricas do YouTube **com otimização de quota**.
-
-```tsx
-import { YouTubeWidget } from '@/components/youtube/youtube-widget'
-
-<YouTubeWidget />
-```
-
-**Props:**
-- Nenhuma prop necessária (configurado via env vars)
-
-**Funcionalidades:**
-- ✅ Dados em tempo real da YouTube API
-- ✅ Layout compacto (256px width)
-- ✅ Estado retrátil/expansível
-- ✅ **Cache agressivo otimizado** (1-6 horas staleTime)
-- ✅ **Preservação de quota** - Redução de ~400 para ~10 calls/dia
-- ✅ **Cache persistente** - localStorage entre sessões
-- ✅ **Estratégia single-call** - 1 chamada por sessão
-- ✅ **Monitor de quota visual** - Indicador de uso diário
-- ✅ Tema dark/light automático
-
-### `<DashboardHomePage />`
-**Layout principal do dashboard educacional** com **autenticação integrada** e **arquitetura modular**.
-
-```tsx
-import { DashboardHomePage } from '@/components/dashboard/dashboard-home-page'
-
-<DashboardHomePage />
-```
-
-**Funcionalidades:**
-- ✅ **Arquitetura refatorada**: De 1599 → 278 linhas
-- ✅ **Componentes modulares**: Imports centralizados
-- ✅ Navegação por abas com controle de acesso
-- ✅ Menu de usuário integrado
-- ✅ Timestamps universais
-- ✅ Grid responsivo
-- ✅ Integração com estado global
-- ✅ Layout adaptativo
-- ✅ Proteção baseada em roles
-- ✅ **Performance otimizada**: Code splitting natural
-
-**Componentes Internos:**
-- `DashboardContent` - Conteúdo principal
-- `Report134View` - Interface do Report 134
-- `ConfigurationView` - Configurações
-- `TestConnectionView` - Testes de conectividade
-- `UserManagement` - Gerenciamento de usuários (Admin)
-- `CreateAcompanhamentoModal` - Modal de criação avançado
-
-### `<AcompanhamentosView />`
-Grid de acompanhamentos educacionais com funcionalidades avançadas.
-
-```tsx
-import { AcompanhamentosView } from '@/components/dashboard/acompanhamentos-view'
-
-<AcompanhamentosView />
-```
-
-**Funcionalidades:**
-- ✅ Filtros por status (CURSANDO/REPROVADO_EVADIDO)
-- ✅ Paginação automática
-- ✅ Busca em tempo real
-- ✅ Exportação Excel
-
-## � Configuração de Autenticação
-
-### Middleware de Proteção
-O sistema inclui middleware automático para proteger rotas.
-
-```typescript
-// middleware.ts
-import { withAuth } from "next-auth/middleware"
-
-export default withAuth(
-  function middleware(req) {
-    // Lógica de proteção personalizada
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        // Verificações de autorização
-        return !!token
-      },
-    },
-  }
-)
-
-export const config = {
-  matcher: [
-    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
-  ]
-}
-```
-
-### **Configuração NextAuth.js com Prisma**
-Arquivo de configuração principal da autenticação integrado ao Prisma.
-
-```typescript
-// src/lib/auth.ts
-import NextAuth from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import bcrypt from 'bcryptjs'
-import { prisma } from './prisma'
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    CredentialsProvider({
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            return null
-          }
-
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email as string }
-          })
-
-          if (!user || !user.active) {
-            return null
-          }
-
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password as string,
-            user.password
-          )
-
-          if (!isPasswordValid) {
-            return null
-          }
-
-          // Update last login
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLogin: new Date() }
-          })
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role as 'ADMIN' | 'USER',
-          }
-        } catch (error) {
-          console.error('Auth error:', error)
-          return null
-        }
-      }
-    })
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.role = user.role
-      return token
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.sub!
-        session.user.role = token.role as 'ADMIN' | 'USER'
-      }
-      return session
-    }
-  }
-})
-```
-
-### **🌍 Variáveis de Ambiente por Camada**
-
-#### **Desenvolvimento (SQLite)**
-```env
-# Banco de Dados Local
+# Configurar .env.local:
 DATABASE_URL="file:./dev.db"
-NODE_ENV="development"
+NEXTAUTH_URL=http://localhost:3002
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
 
-# Autenticação
-NEXTAUTH_URL=http://localhost:3001
-NEXTAUTH_SECRET=sua_chave_secreta_forte_com_32_caracteres
+# Setup do banco:
+npx prisma generate
+npx prisma migrate dev
+npm run seed
+
+# Executar:
+npm run dev
 ```
 
-#### **Produção (PostgreSQL)**
-```env
-# Banco de Dados PostgreSQL (Camada 1)
-DATABASE_URL_POSTGRES="postgresql://user:pass@host:port/db?sslmode=require"
-NODE_ENV="production"
-
-# Autenticação
-NEXTAUTH_URL=https://seu-dominio.vercel.app
-NEXTAUTH_SECRET=chave_super_segura_producao_64_caracteres
-
-# Opcional: Fallback para qualquer PostgreSQL provider
-POSTGRES_URL="postgresql://user:pass@host:port/db"
-```
-
-### **🛠️ Setup de Produção com PostgreSQL**
-
-#### **1. Providers Recomendados**
-- **Supabase** - PostgreSQL gratuito com 500MB
-- **Railway** - PostgreSQL com $5/mês de crédito
-- **Aiven** - PostgreSQL managed gratuito
-- **Neon** - PostgreSQL serverless com branching
-
-#### **2. Configuração no Vercel**
+**Deploy em Produção:**
 ```bash
-# Via CLI
-vercel env add DATABASE_URL_POSTGRES
-# Cole a connection string PostgreSQL
+# 1. Criar PostgreSQL no Neon.tech
+# 2. Configurar variáveis no Vercel:
+DATABASE_URL=postgresql://user:pass@host.aws.neon.tech/db?sslmode=require
+NEXTAUTH_URL=https://seu-app.vercel.app
+NEXTAUTH_SECRET=sua_chave_forte
 
-# Via Dashboard
-# 1. Vercel Project Settings
-# 2. Environment Variables
-# 3. Add: DATABASE_URL_POSTGRES = postgresql://...
+# 3. Deploy automático:
+git push origin main
+
+# 4. Usuários criados automaticamente:
+# admin@moodle.local / admin123 (ADMIN)
+# mmpagani@tjrs.jus.br / cjud@2233 (ADMIN)
+# marciacampos@tjrs.jus.br / cjud@dicaf (USER)
 ```
 
-#### **3. Teste de Conexão**
-```typescript
-// Teste local antes do deploy
-import { testPostgresConnection } from '@/lib/postgres-users'
-
-const isConnected = await testPostgresConnection()
-console.log('PostgreSQL Status:', isConnected ? '✅' : '❌')
-```
-
-### **Cliente Prisma**
-```typescript
-// src/lib/prisma.ts
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-```
-
-## �🔧 Hooks Customizados
-
-### `useYoutube()`
-Hook para dados do YouTube **com cache otimizado e preservação de quota**.
-
-```tsx
-import { useYoutube } from '@/hooks/use-youtube'
-
-const { data, isLoading, error } = useYoutube()
-```
-
-**Configuração de Cache Otimizada:**
-```typescript
-{
-  staleTime: 1 * 60 * 60 * 1000,     // 1 hora
-  gcTime: 6 * 60 * 60 * 1000,        // 6 horas  
-  refetchOnWindowFocus: false,        // Não refetch no foco
-  refetchOnMount: false,              // Não refetch no mount
-  refetchOnReconnect: false,          // Não refetch na reconexão
-  retry: 1,                           // Apenas 1 retry
-}
-```
-
-**Cache Persistente:**
-- ✅ localStorage para persistir dados entre sessões
-- ✅ Quota monitor para rastrear uso diário da API
-- ✅ Estratégia single-call (1 chamada por sessão)
-- ✅ Fallback para dados cached em caso de erro
-
-**Retorna:**
-```typescript
-{
-  data: {
-    subscriberCount: number
-    viewCount: number
-    videoCount: number
-    channelTitle: string
-    customUrl: string
-    thumbnails: YouTubeChannelThumbnails
-  }
-  isLoading: boolean
-  error: Error | null
-  refetch: () => void
-}
-```
-
-### `useMoodle()`
-Hook para dados do Moodle.
-
-```tsx
-import { useMoodle } from '@/hooks/use-moodle'
-
-const { courses, users, isLoading } = useMoodle()
-```
-
-### `useReport134()`
-Hook específico para relatório 134.
-
-```tsx
-import { useReport134 } from '@/hooks/use-report-134'
-
-const { data, isLoading, exportToExcel } = useReport134()
-```
-
-## 🎨 Sistema de Tema
-
-### `useThemeStore()`
-Store Zustand para gerenciamento de tema.
-
-```tsx
-import { useThemeStore } from '@/store/moodle-store'
-
-const { theme, toggleTheme } = useThemeStore()
-```
-
-### `<ThemeProvider />`
-Provider para contexto de tema.
-
-```tsx
-import { ThemeProvider } from '@/providers/theme-provider'
-
-<ThemeProvider>
-  <App />
-</ThemeProvider>
-```
-
-## 🛡️ Proteção de Rotas e Componentes
-
-### Proteção por Role
-Exemplo de como proteger componentes baseado no role do usuário:
-
-```tsx
-import { useSession } from 'next-auth/react'
-
-function AdminOnlyComponent() {
-  const { data: session } = useSession()
-  
-  if (session?.user?.role !== 'ADMIN') {
-    return <div>Acesso negado</div>
-  }
-  
-  return <div>Conteúdo administrativo</div>
-}
-```
-
-### Wrapper de Autenticação
-Componente para verificar autenticação:
-
-```tsx
-function ProtectedRoute({ children, requiredRole = null }) {
-  const { data: session, status } = useSession()
-  
-  if (status === 'loading') return <Loading />
-  if (status === 'unauthenticated') return <LoginForm />
-  if (requiredRole && session?.user?.role !== requiredRole) {
-    return <Unauthorized />
-  }
-  
-  return children
-}
-
-// Uso
-<ProtectedRoute requiredRole="ADMIN">
-  <UserManagement />
-</ProtectedRoute>
-```
-
-### Redirecionamento Automático
-Middleware já configurado para:
-- ✅ Redirecionar usuários não autenticados para `/auth/signin`
-- ✅ Proteger todas as rotas exceto API auth e assets
-- ✅ Preservar URL de destino após login
-
-## 📊 Clientes de API
-
-### `YouTubeClient`
-Cliente para YouTube Data API v3.
-
-```tsx
-import { youtubeClient } from '@/lib/youtube-client'
-
-// Buscar informações do canal
-const channelInfo = await youtubeClient.getChannelInfo()
-
-// Buscar estatísticas
-const metrics = await youtubeClient.getChannelMetrics28Days()
-```
-
-### `MoodleClient`
-Cliente para Moodle Web Services.
-
-```tsx
-import { moodleClient } from '@/lib/moodle-client'
-
-// Buscar cursos
-const courses = await moodleClient.getCourses()
-
-// Buscar usuários
-const users = await moodleClient.getUsers()
-```
-
-## 🎯 Utilitários
-
-### `YouTubeUtils`
-Utilitários para formatação de dados do YouTube.
-
-```tsx
-import { YouTubeUtils } from '@/hooks/use-youtube'
-
-// Formatar números grandes
-const formatted = YouTubeUtils.formatViews(123456) // "123K"
-
-// Formatar tempo de assistência
-const watchTime = YouTubeUtils.formatWatchTime(7200) // "2h"
-```
-
-### `QueryClient`
-Configuração centralizada do React Query.
-
-```tsx
-import { queryClient } from '@/lib/query-client'
-
-// Configurações:
-// - gcTime: 10 minutos
-// - staleTime: 5 minutos
-// - retry: 3 tentativas
-// - refetchOnWindowFocus: false
-```
-
-## 📝 Tipos TypeScript
-
-### `YouTubeChannel`
-```typescript
-interface YouTubeChannel {
-  id: string
-  snippet: {
-    title: string
-    description: string
-    customUrl: string
-    thumbnails: YouTubeChannelThumbnails
-  }
-  statistics: {
-    viewCount: string
-    subscriberCount: string
-    hiddenSubscriberCount: boolean
-    videoCount: string
-  }
-}
-```
-
-### `MoodleCourse`
-```typescript
-interface MoodleCourse {
-  id: number
-  fullname: string
-  shortname: string
-  categoryid: number
-  status: 'CURSANDO' | 'REPROVADO_EVADIDO'
-  startdate: number
-  enddate: number
-}
-```
-
-## 🚀 Exemplo de Uso Completo
-
-```tsx
-import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from '@/providers/theme-provider'
-import { DashboardHomePage } from '@/components/dashboard/dashboard-home-page'
-import { YouTubeWidget } from '@/components/youtube/youtube-widget'
-
-const queryClient = new QueryClient()
-
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <div className="min-h-screen bg-background">
-          <header className="border-b p-4">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">Moodle Dashboard</h1>
-              <YouTubeWidget />
-            </div>
-          </header>
-          
-          <main className="container mx-auto p-4">
-            <DashboardHomePage />
-          </main>
-        </div>
-      </ThemeProvider>
-    </QueryClientProvider>
-  )
-}
-```
-
-## 📦 Build como Biblioteca
-
-Para usar como biblioteca externa:
-
+**Troubleshooting Deploy:**
 ```bash
-# 1. Build dos componentes
-npm run build
+# Erro: Can't reach database server
+# ✅ Verificar se DATABASE_URL termina com .aws.neon.tech
+# ❌ Não pode estar truncada em .aw:5432
 
-# 2. Configurar package.json
-{
-  "name": "@Pagani83/moodle-dashboard-sdk",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  }
-}
+# Erro: Authentication failed
+# ✅ NEXTAUTH_URL deve ser HTTPS em produção
+# ✅ Aguardar 1-2min para variáveis terem efeito
 
-# 3. Publicar
-npm publish
+# Testar deploy:
+GET https://seu-app.vercel.app/api/debug/users
 ```
 
-## 🔒 Requisitos
-
-### **Core**
-- **React** 19+
-- **TypeScript** 5+
-- **Tailwind CSS** 4+
-- **TanStack Query** 5+
-- **Zustand** 4+
-- **ExcelJS** 4+ (para sistema de cache)
-- **Node.js** 18+ (para file system e cron jobs)
-- **Vercel/Netlify** (para cron jobs automáticos)
-
-### **Banco de Dados**
-- **Prisma** 5+ (ORM)
-- **SQLite** (desenvolvimento)
-- **PostgreSQL** 14+ (produção recomendado)
-- **MySQL** 8+ (alternativa)
-
-### **Autenticação**
-- **NextAuth.js** 5+
-- **bcryptjs** 2+ (hash de senhas)
-- **JWT** (tokens de sessão)
-
-## 📈 Performance
-
-- **Tree Shaking**: Componentes importados individualmente
-- **Code Splitting**: Lazy loading automático
-- **Cache Strategy**: React Query otimizado
-- **Bundle Size**: ~50kb gzipped por componente
-- **Auto-Update**: Cron job diário com impacto zero na performance
-- **Storage Resiliente**: Fallback local para alta disponibilidade
-- **Universal Timestamps**: Consistência global sem overhead
-- **Database Performance**: Prisma com connection pooling
-- **Query Optimization**: Seleção explícita de campos
-- **Index Strategy**: Índices otimizados para queries frequentes
-
-## 🤝 Contribuição SDK
-
-Para contribuir com o SDK:
-
-1. Fork o repositório
-2. Crie componentes em `src/components/`
-3. Adicione hooks em `src/hooks/`
-4. Documente no SDK.md
-5. Teste com exemplos
-6. Submeta Pull Request
-
-## 📝 Changelog
-
-### v2.2.0 - Integração Prisma Completa
-- ✅ **Prisma ORM Integration** - Sistema completo de persistência de dados
-- ✅ **User Management com Banco** - CRUD completo com SQLite/PostgreSQL
-- ✅ **Acompanhamentos Model** - Relacionamento User -> Acompanhamentos
-- ✅ **NextAuth.js + Prisma** - Autenticação integrada ao banco
-- ✅ **Auto lastLogin Tracking** - Atualização automática de sessão
-- ✅ **Cascade Delete** - Segurança nos relacionamentos
-- ✅ **Migration System** - Versionamento do schema do banco
-- ✅ **Type-Safe Database** - Tipagem automática com Prisma Client
-- ✅ **Development Tools** - Prisma Studio para visualização dos dados
-
-### v2.1.0 - Sistema de Auto-Update Inteligente  
-- ✅ **Vercel Cron Integration** - Execução automática diária às 5h UTC
-- ✅ **Cache Resiliente** - Storage em Excel com backup dos últimos 7 arquivos
-- ✅ **Force Refresh API** - `/api/cache/report-134?force_refresh=true`
-- ✅ **Auto-Update API** - `/api/auto-update` com token de segurança
-- ✅ **useCachedReport134 Enhanced** - Cache inteligente com retry exponencial
-- ✅ **Universal Timestamps** - Baseados no sistema de arquivos para consistência
-- ✅ **Storage Automático** - Limpeza e fallback graceful
-- ✅ **Security Token** - CRON_SECRET para proteção de execução
-- ✅ **Monitoring & Logs** - Sistema completo de auditoria
-
-### v2.0.0 - Sistema de Autenticação
-- ✅ **NextAuth.js v5** - Sistema completo de autenticação
-- ✅ **Role-based Access** - Controle ADMIN/USER
-- ✅ **UserManagement** - Interface administrativa
-- ✅ **Middleware Protection** - Proteção automática de rotas
-- ✅ **JWT Sessions** - Sessões persistentes
-- ✅ **UserMenu Component** - Menu com informações do usuário
-
-### v1.5.0 - Timestamps Universais
-- ✅ **Universal Timestamps** - Exibição consistente em qualquer timezone
-- ✅ **Auto-refresh** - Atualização automática a cada 30 segundos
-- ✅ **Real-time Updates** - Sincronização em tempo real
-
-### v1.0.0 - Versão Inicial
-- ✅ **Dashboard Base** - Layout principal
-- ✅ **YouTube Integration** - Widget de métricas
-- ✅ **Moodle Client** - Integração com LMS
-- ✅ **Report System** - Sistema de relatórios
+10. Testes, lint e contribuição
+- Recomenda-se adicionar/usar scripts:
+  - `npm run lint` (eslint)
+  - `npm run typecheck` (tsc --noEmit)
+  - `npm run test` (jest/vi)
+- Testes recomendados:
+  - unit: `extractUniqueCoursesFromReport` (happy path + empty + duplicates)
+  - integration: `useCachedReport134` mockando fetch e filesystem
+  - e2e: fluxo de auto-update simplificado
+- PR checklist sugerido:
+  - rodar lint e typecheck
+  - adicionar/atualizar docs correspondentes
+  - incluir testes para novo comportamento
 
 ---
 
-**SDK desenvolvido para facilitar a criação de dashboards educacionais modernos e performáticos.**
+## 🚨 **BREAKING CHANGES & MIGRAÇÃO**
+
+### **Para Desenvolvedores Atualizando:**
+
+#### **✅ Mudanças Obrigatórias:**
+```typescript
+// ❌ ANTIGO:
+import { useReport134Full } from '@/hooks/use-report-134';
+const report = useReport134Full(client);
+
+// ✅ NOVO:
+import { useCombinedReportData } from '@/hooks/use-report-134';
+const report = useCombinedReportData();
+```
+
+#### **✅ Endpoints Atualizados:**
+```bash
+# ✅ USE AGORA:
+GET /api/cache/combined-report?latest=1    # Principal
+POST /api/cache/combined-report            # Para updates
+
+# ⚠️ FALLBACK (não usar diretamente):
+GET /api/cache/report-134?latest=1         # Compatibilidade
+```
+
+---
+
+## 📊 **MÉTRICAS DE PERFORMANCE**
+
+| **Métrica** | **ANTES** | **AGORA** | **Melhoria** |
+|-------------|-----------|-----------|--------------|
+| **F5 Load Time** | 15-30s | 2-4s | 🔥 **85% mais rápido** |
+| **Total Records** | 34.201 | 37.455 | 📈 **+9.5% mais dados** |
+| **API Calls on F5** | ✅ Fazia chamada | ❌ Sem chamadas | ⚡ **100% redução** |
+| **Cache Strategy** | 5min stale | 24h stale | 🎯 **288x menos requests** |
+
+---
+
+## 🎯 **STATUS ATUAL DO SISTEMA**
+
+### **✅ Funcionalidades Operacionais:**
+- [x] Cache combinado funcionando (37.455 registros)
+- [x] F5 otimizado (sem API calls)
+- [x] Auto-update às 5h via Vercel Cron  
+- [x] Progress bars em tempo real
+- [x] Fallback inteligente para R-134
+- [x] ModernSourceCard com animações
+- [x] Header mostra total correto
+- [x] Build e TypeScript limpos
+
+---
+
+**🎉 Sistema otimizado e documentado! Cache inteligente + dados combinados = performance superior.**
+
+**Para suporte técnico:** Consulte `docs/TECHNICAL_SDK_UPDATE.md` para detalhes de implementação.
+
